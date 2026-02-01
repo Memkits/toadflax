@@ -116,16 +116,47 @@
 
 ## 6. LLM Tools 集成设计
 
-### 6.1 工具函数定义
+### 6.1 工具函数定义（Gemini tools schema）
 
-需要在前端实现以下 "tools" 供 LLM 调用：
+以下 schema 采用 Gemini 的 `function_declarations` 风格，前端需严格按字典序 bisection-key 进行排序、插入与邻接查询。
 
-1. **list-chapters**: 列出所有章节（标题+概要）
+1. **list-chapters**: 列出所有章节（标题+概要，按字典序）
+   - parameters:
+     - `includeSummaries` (boolean, default true)
+
 2. **get-chapter**: 获取特定章节的完整内容
-3. **create-chapter**: 创建新章节
-4. **update-chapter**: 更新章节内容
-5. **delete-chapter**: 删除章节
-6. **reorder-chapter**: 调整章节顺序
+   - parameters:
+     - `chapterId` (string, required)
+
+3. **create-chapter**: 创建新章节（末尾追加）
+   - parameters:
+     - `title` (string, required)
+     - `summary` (string, optional)
+     - `content` (string, optional)
+     - `position` (string, enum: "last", default "last")
+
+4. **create-chapter-after**: 在指定节点后创建章节（字典序插入）
+   - parameters:
+     - `afterChapterId` (string, required)
+     - `title` (string, required)
+     - `summary` (string, optional)
+     - `content` (string, optional)
+
+5. **update-chapter-content**: 只修改正文内容
+   - parameters:
+     - `chapterId` (string, required)
+     - `content` (string, required)
+
+6. **update-chapter-meta**: 只修改标题与概要（不影响正文）
+   - parameters:
+     - `chapterId` (string, required)
+     - `title` (string, optional)
+     - `summary` (string, optional)
+
+7. **get-chapter-with-neighbors**: 查看章节，同时返回前后章节概要
+   - parameters:
+     - `chapterId` (string, required)
+     - `includeNeighborSummaries` (boolean, default true)
 
 ### 6.2 Tool 调用流程
 
@@ -141,6 +172,20 @@ LLM 返回 tool_call
 将操作结果返回给 LLM
   ↓
 LLM 生成最终回复
+
+### 6.3 Gemini tools JSON 示例（摘要）
+
+- `function_declarations`:
+  - `list-chapters`
+  - `get-chapter`
+  - `create-chapter`
+  - `create-chapter-after`
+  - `update-chapter-content`
+  - `update-chapter-meta`
+  - `get-chapter-with-neighbors`
+
+> 注意：所有工具实现都必须按 bisection-key 的字典序进行排序与定位；
+> `create-chapter-after` 需要用 `afterChapterId` 对应的 `order-key` 与其后继 `order-key` 进行 `bisect`。
 ```
 
 ## 7. 实施步骤
@@ -193,9 +238,9 @@ LLM 生成最终回复
 ### 8.1 bisection-key 使用规范
 
 - 新建第一个章节：使用 `mid-id`
-- 末尾追加：`(bisect last-order-key max-id)`
-- 开头插入：`(bisect min-id first-order-key)`
-- 中间插入：`(bisect prev-key next-key)`
+- 末尾追加：`bisect last-order-key max-id`
+- 开头插入：`bisect min-id first-order-key`
+- 中间插入：`bisect prev-key next-key`
 
 ### 8.2 性能优化
 
@@ -232,7 +277,3 @@ LLM 生成最终回复
 - Markdown 渲染 (comp-md-block)
 - 输入框 (comp-message-box)
 - 模态框工具 (use-modal-menu, use-prompt)
-
-### 新增依赖
-
-- 可能需要：rich-text-editor 或保持纯文本输入
