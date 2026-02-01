@@ -19,6 +19,49 @@
                   messages0 $ if (some? messages) messages ([])
                 conj messages0 $ {} (:role :user) (:content content)
           :examples $ []
+        |build-function-result-input $ %{} :CodeEntry (:doc |)
+          :code $ quote
+            defn build-function-result-input (tool-name call-id result-text)
+              js-array $ js-object (:type |function_result) (:name tool-name) (:call_id call-id) (:result result-text)
+          :examples $ []
+        |build-v2-request $ %{} :CodeEntry (:doc |)
+          :code $ quote
+            defn build-v2-request (model content messages0 prev-interaction-id tools-list chapters current-chapter-id)
+              let
+                  ch $ if (some? current-chapter-id) (get chapters current-chapter-id) nil
+                  content-with-id $ if (some? ch)
+                    str "|[chapter: " current-chapter-id "| title: " (:title ch) "|] " content
+                    , content
+                if (some? prev-interaction-id)
+                  js-object (:model model) (:previous_interaction_id prev-interaction-id)
+                    :input $ if
+                      not $ blank? content-with-id
+                      js-array $ js-object (:type |text) (:text content-with-id)
+                      , js/undefined
+                    :tools $ if
+                      > (.-length tools-list) 0
+                      , tools-list js/undefined
+                  js-object (:model model)
+                    :input $ if (empty? messages0)
+                      js-array $ js-object (:role |user)
+                        :content $ js-array
+                          js-object (:type |text) (:text content-with-id)
+                      -> messages0
+                        map $ fn (m)
+                          let
+                              msg-content $ :content m
+                            if (blank? msg-content) nil $ js-object
+                              :role $ if
+                                = :assistant $ :role m
+                                , |model |user
+                              :content $ js-array
+                                js-object (:type |text) (:text msg-content)
+                        filter $ fn (x) (some? x)
+                        , to-js-data
+                    :tools $ if
+                      > (.-length tools-list) 0
+                      , tools-list js/undefined
+          :examples $ []
         |call-genai-msg! $ %{} :CodeEntry (:doc |)
           :code $ quote
             defn call-genai-msg! (variant cursor chapters state prompt-text search? think? d! *text *thinking-text) (hint-fn async)
@@ -298,7 +341,7 @@
           :examples $ []
         |call-genai-msg-v2! $ %{} :CodeEntry (:doc |)
           :code $ quote
-            defn call-genai-msg-v2! (variant cursor chapters state prompt-text search? think? d! *text *thinking-text) (hint-fn async) (println "|call v2")
+            defn call-genai-msg-v2! (variant cursor chapters state prompt-text search? think? d! *text *thinking-text current-chapter-id) (hint-fn async) (println "|call v2")
               do
                 if (nil? @*gen-ai-new)
                   reset! *gen-ai-new $ new GoogleGenAI
@@ -314,60 +357,46 @@
                     gen-ai @*gen-ai-new
                     model $ pick-model variant
                     content $ .!replace prompt-text "\"{{selected}}" (or selected "\"<未找到选中内容>")
-                    json? $ or (.!includes prompt-text "\"{{json}}") (.!includes prompt-text "\"{{JSON}}")
-                    has-url? $ or (.!includes prompt-text "\"http://") (.!includes prompt-text "\"https://")
                     messages0 $ or (:messages state) ([])
                     messages1 $ upsert-assistant-message messages0 "\"" nil
                     tools-list chapter-tools-declarations
+                    prev-interaction-id $ :interaction-id state
                   js/setTimeout $ fn ()
                     d! $ :: :states-merge cursor state
                       {} (:answer nil) (:thinking nil) (:loading? true) (:done? false) (:messages messages1)
                   let
-                      stream $ js-await
-                        .!create (.-interactions gen-ai)
-                          js-object (:model model)
-                            :input $ if (empty? messages0)
-                              js-array $ js-object (:role |user)
-                                :content $ js-array
-                                  js-object (:type |text) (:text content)
-                              -> messages0
-                                map $ fn (m)
-                                  js-object
-                                    :role $ if
-                                      = :assistant $ :role m
-                                      , |model |user
-                                    :content $ js-array
-                                      js-object (:type |text)
-                                        :text $ :content m
-                                , to-js-data
-                            :stream true
-                            :tools $ if
-                              > (.-length tools-list) 0
-                              , tools-list js/undefined
-                    js-await $ js-for-await stream
-                      fn (chunk)
-                        if
-                          = (.-event_type chunk) |content.delta
-                          let
-                              delta $ .-delta chunk
-                              delta-type $ .-type delta
-                            if (= delta-type |text)
-                              when (.-text delta)
-                                swap! *text str $ .-text delta
-                                d! $ :: :states-merge cursor state
-                                  {} (:answer @*text) (:loading? false) (:done? false)
-                                    :messages $ upsert-assistant-message messages1 @*text @*thinking-text
-                              if (= delta-type |thought)
-                                when (.-thought delta)
-                                  swap! *thinking-text str $ .-thought delta
-                                  d! $ :: :states-merge cursor state
-                                    {} (:thinking @*thinking-text) (:loading? false) (:done? false)
-                                      :messages $ upsert-assistant-message messages1 @*text @*thinking-text
-                          when
-                            = (.-event_type chunk) |interaction.complete
-                            d! $ :: :states-merge cursor state
-                              {} (:answer @*text) (:thinking @*thinking-text) (:loading? false) (:done? true)
-                                :messages $ upsert-assistant-message messages1 @*text @*thinking-text
+                      request-obj $ build-v2-request model content messages0 prev-interaction-id tools-list chapters current-chapter-id
+                      interaction $ js-await
+                        .!create (.-interactions gen-ai) request-obj
+                      result $ extract-interaction-outputs interaction
+                      answer-text $ :text result
+                      function-calls $ to-calcit-data (:function-calls result)
+                      new-interaction-id $ :interaction-id result
+                    js/console.log "|interaction result:" result
+                    if
+                      not $ empty? function-calls
+                      let
+                          first-call $ first function-calls
+                          tool-name $ :name first-call
+                          tool-args $ :arguments first-call
+                          call-id $ :id first-call
+                          tool-result $ handle-chapter-tool-call tool-name tool-args chapters d!
+                          result-text $ js/JSON.stringify tool-result
+                          followup-input $ build-function-result-input tool-name call-id result-text
+                          followup-req $ js-object (:model model) (:previous_interaction_id new-interaction-id) (:input followup-input)
+                          followup-interaction $ js-await
+                            .!create (.-interactions gen-ai) followup-req
+                          followup-result $ extract-interaction-outputs followup-interaction
+                          final-text $ :text followup-result
+                          final-interaction-id $ :interaction-id followup-result
+                        d! $ :: :states-merge cursor state
+                          {} (:answer final-text) (:thinking nil) (:loading? false) (:done? true)
+                            :messages $ upsert-assistant-message messages1 final-text nil
+                            :interaction-id final-interaction-id
+                      d! $ :: :states-merge cursor state
+                        {} (:answer answer-text) (:thinking nil) (:loading? false) (:done? true)
+                          :messages $ upsert-assistant-message messages1 answer-text nil
+                          :interaction-id new-interaction-id
           :examples $ []
         |chapter-tools-declarations $ %{} :CodeEntry (:doc |)
           :code $ quote
@@ -441,7 +470,7 @@
                 {}
                   :class-name $ str-spaced style-chapter-item (if selected? style-chapter-item-active nil)
                   :on-click $ fn (e d!)
-                    on-select (:id chapter) d!
+                    on-select (:order-key chapter) d!
                 div
                   {} $ :class-name style-chapter-title
                   <> $ :title chapter
@@ -453,7 +482,7 @@
                 span
                   {} (:class-name style-chapter-delete)
                     :on-click $ fn (e d!) (-> e :event .!stopPropagation)
-                      on-delete (:id chapter) d!
+                      on-delete (:order-key chapter) d!
                   <> "|✕"
           :examples $ []
         |comp-chapter-preview $ %{} :CodeEntry (:doc |)
@@ -461,24 +490,28 @@
             defcomp comp-chapter-preview (chapter)
               div
                 {} $ :class-name style-preview
-                if (some? chapter)
-                  div ({})
-                    div
-                      {} $ :class-name style-preview-title
-                      <> $ :title chapter
-                    if
-                      blank? $ :summary chapter
-                      , nil $ div
-                        {} $ :class-name style-preview-summary
-                        <> $ :summary chapter
-                    div
-                      {} $ :class-name style-preview-content
-                      memof1-call comp-md-block
-                        -> (:content chapter) (either "\"")
-                        {} $ :class-name style-md-content
-                  div
-                    {} $ :class-name style-empty-state
-                    <> "|Select or create a chapter"
+                div
+                  {} $ :class-name style-section-title
+                  <> "|Order Key"
+                div
+                  {} $ :class-name style-preview-summary
+                  <> $ :order-key chapter
+                div
+                  {} $ :class-name style-section-title
+                  <> |SUMMARY
+                div
+                  {} $ :class-name style-preview-summary
+                  <> $ if
+                    blank? $ :summary chapter
+                    , "|(空)" (:summary chapter)
+                div
+                  {} $ :class-name style-section-title
+                  <> |CONTENT
+                div
+                  {} $ :class-name style-preview-content
+                  <> $ if
+                    blank? $ :content chapter
+                    , "|(空)" (:content chapter)
           :examples $ []
         |comp-chapter-sidebar $ %{} :CodeEntry (:doc |)
           :code $ quote
@@ -504,7 +537,7 @@
                         fn (ch)
                           [] (:order-key ch)
                             comp-chapter-item ch
-                              = (:id ch) current-id
+                              = (:order-key ch) current-id
                               , on-select on-delete
           :examples $ []
         |comp-container $ %{} :CodeEntry (:doc |)
@@ -522,6 +555,7 @@
                   state $ or (:data states)
                     {} (:answer nil) (:loading? false) (:done? false)
                       :messages $ []
+                      :interaction-id nil
                   done? $ :done? state
                   messages $ or (:messages state) ([])
                   model $ either (:model state) :gemini
@@ -641,7 +675,6 @@
                                           , nil
                                         comp-copy $ either content "\""
                                       , nil
-
                         ; if
                           and
                             > (count messages) 0
@@ -654,18 +687,16 @@
                                 :class-name $ str-spaced css/button style-reply-button
                                 :on-click $ fn (e d!)
                                   .show reply-plugin d! $ fn (text)
-                                    submit-message! cursor state text (:search? message-box-state) (:think? message-box-state) model d!
+                                    submit-message! cursor chapters state text (:search? message-box-state) (:think? message-box-state) model d! current-chapter-id
                               <> |Reply
                           , nil
-                        if (:loading? state)
-                          div ({}) (memof1-call-by :abort-loading comp-abort "\"Loading...")
                         div
                           {} $ :class-name css/row-parted
                           div
                             {} $ :class-name (str-spaced css/row-middle css/gap8)
                             if (:done? state) nil $ div
                               {} $ :style
-                                {} (:display :flex) (:justify-content :center) (:align-items :center)
+                                {} (:display :flex) (:justify-content :center) (:align-items :center) (:margin |8px)
                               memof1-call-by :abort-streaming comp-abort "\"Streaming..."
                           if (:done? state)
                             div $ {}
@@ -677,7 +708,7 @@
                           div
                             {}
                               :class-name $ str-spaced css/row-center
-                              :style $ {} (:padding "\"8px 0")
+                              :style $ {} (:padding "|8px 0")
                             button
                               {}
                                 :class-name $ str-spaced css/button style-clear-button
@@ -697,7 +728,7 @@
                         fn (text search? think? d!)
                           do $ submit-message! cursor chapters
                             -> state (assoc :answer nil) (assoc :thinking nil) (assoc :done? false)
-                            , text search? think? model d!
+                            , text search? think? model d! current-chapter-id
                   model-plugin.render
                   reply-plugin.render
                   sessions-plugin.render
@@ -873,23 +904,36 @@
                 js/setTimeout $ fn ()
                   .!select $ .!querySelector el "\"textarea"
           :examples $ []
+        |extract-interaction-outputs $ %{} :CodeEntry (:doc |)
+          :code $ quote
+            defn extract-interaction-outputs (interaction)
+              let
+                  outputs $ either (.-outputs interaction) (js-array)
+                  text-output $ -> outputs
+                    .!find $ fn (o & args)
+                      = (.-type o) |text
+                  function-calls $ -> outputs
+                    .!filter $ fn (o & args)
+                      = (.-type o) |function_call
+                    .!map $ fn (o & args)
+                      {}
+                        :name $ .-name o
+                        :arguments $ .-arguments o
+                        :id $ .-id o
+                    , to-js-data
+                {}
+                  :text $ if (some? text-output) (.-text text-output) |
+                  :function-calls function-calls
+                  :interaction-id $ .-id interaction
+          :examples $ []
         |generate-session-id $ %{} :CodeEntry (:doc |)
           :code $ quote
             defn generate-session-id () $ str (js/Date.now)
           :examples $ []
         |get-current-chapter $ %{} :CodeEntry (:doc |)
           :code $ quote
-            defn get-current-chapter (chapters chapter-id)
-              if (nil? chapter-id) nil $ let
-                  found $ -> chapters (to-pairs) (&set:to-list)
-                    sort $ fn (a b)
-                      &compare (first a) (first b)
-                    filter $ fn (pair)
-                      =
-                        :id $ last pair
-                        , chapter-id
-                    first
-                if (some? found) (last found) nil
+            defn get-current-chapter (chapters chapter-key)
+              if (nil? chapter-key) nil $ get chapters chapter-key
           :examples $ []
         |get-gemini-key! $ %{} :CodeEntry (:doc |)
           :code $ quote
@@ -921,48 +965,31 @@
                   sorted-keys $ sort
                     &set:to-list $ keys chapters0
                     , &compare
-                  find-pair $ fn (chapter-id)
-                    -> chapters0 (to-pairs)
-                      filter $ fn (pair)
-                        =
-                          :id $ last pair
-                          , chapter-id
-                      , first
-                  get-chapter $ fn (chapter-id)
+                  neighbor-summaries $ fn (chapter-key)
                     let
-                        pair $ find-pair chapter-id
-                      if (some? pair) (last pair) nil
-                  chapter-key $ fn (chapter-id)
-                    let
-                        pair $ find-pair chapter-id
-                      if (some? pair) (first pair) nil
-                  neighbor-summaries $ fn (chapter-id)
-                    let
-                        key $ chapter-key chapter-id
-                        idx-pair $ if (some? key)
-                          -> sorted-keys
-                            map-indexed $ fn (idx k) ([] idx k)
-                            filter $ fn (pair)
-                              = (last pair) key
-                            , first
-                        idx $ if (some? idx-pair) (first idx-pair) nil
-                        prev-key $ if
-                          and (some? idx) (> idx 0)
-                          nth sorted-keys $ dec idx
+                        idx $ index-of sorted-keys chapter-key
+                        prev-key $ if (> idx 0)
+                          get sorted-keys $ dec idx
                           , nil
                         next-key $ if
-                          and (some? idx)
+                          and (>= idx 0)
                             < idx $ dec (count sorted-keys)
-                          nth sorted-keys $ inc idx
+                          get sorted-keys $ inc idx
                           , nil
                         prev-ch $ if (some? prev-key) (get chapters0 prev-key) nil
                         next-ch $ if (some? next-key) (get chapters0 next-key) nil
                       {}
                         :previous $ if (some? prev-ch)
-                          select-keys prev-ch $ [] :id :title :summary
+                          {}
+                            :id $ :order-key prev-ch
+                            :title $ :title prev-ch
+                            :summary $ :summary prev-ch
                           , nil
                         :next $ if (some? next-ch)
-                          select-keys next-ch $ [] :id :title :summary
+                          {}
+                            :id $ :order-key next-ch
+                            :title $ :title next-ch
+                            :summary $ :summary next-ch
                           , nil
                   title $ or (.-title args0) "\"Untitled"
                   summary $ or (.-summary args0) |
@@ -976,56 +1003,34 @@
                         fn (k)
                           let
                               ch $ get chapters0 k
-                            {}
-                              :id $ :id ch
-                              :order-key $ :order-key ch
+                            {} (:id k) (:order-key k)
                               :title $ :title ch
                               :summary $ :summary ch
                   (= tool-name |get-chapter)
                     let
-                        ch $ get-chapter chapter-id
+                        ch $ get chapters0 chapter-id
                       if (some? ch)
                         {} (:ok? true) (:chapter ch)
                         {} (:ok? false) (:error "\"Chapter not found")
                   (= tool-name |create-chapter)
                     let
-                        new-id $ str (.!now js/Date)
                         new-key $ if (empty? chapters0) mid-id
-                          let
-                              sorted-keys2 $ sort
-                                &set:to-list $ keys chapters0
-                                , &compare
-                            bisect (last sorted-keys2) max-id
-                        new-chapter $ {} (:id new-id) (:order-key new-key) (:title title) (:summary summary) (:content content0)
+                          bisect (last sorted-keys) max-id
+                        new-chapter $ {} (:order-key new-key) (:title title) (:summary summary) (:content content0)
                       d! $ :: :create-chapter-with title summary content0
                       {} (:ok? true) (:chapter new-chapter)
                   (= tool-name |create-chapter-after)
                     let
-                        after-key $ chapter-key after-id
-                        sorted-keys2 $ sort
-                          &set:to-list $ keys chapters0
-                          , &compare
-                        idx-pair $ if (some? after-key)
-                          -> sorted-keys2
-                            map-indexed $ fn (idx k) ([] idx k)
-                            filter $ fn (pair)
-                              = (last pair) after-key
-                            , first
-                        idx $ if (some? idx-pair) (first idx-pair) nil
+                        idx $ index-of sorted-keys after-id
                         next-key $ if
-                          and (some? idx)
-                            < idx $ dec (count sorted-keys2)
-                          nth sorted-keys2 $ inc idx
+                          and (>= idx 0)
+                            < idx $ dec (count sorted-keys)
+                          get sorted-keys $ inc idx
                           , nil
-                        new-key $ if (some? after-key)
-                          if (some? next-key) (bisect after-key next-key) (bisect after-key max-id)
-                          if (empty? chapters0) mid-id $ let
-                              sorted-keys3 $ sort
-                                &set:to-list $ keys chapters0
-                                , &compare
-                            bisect (last sorted-keys3) max-id
-                        new-id $ str (.!now js/Date)
-                        new-chapter $ {} (:id new-id) (:order-key new-key) (:title title) (:summary summary) (:content content0)
+                        new-key $ if (>= idx 0)
+                          bisect after-id $ or next-key max-id
+                          if (empty? chapters0) mid-id $ bisect (last sorted-keys) max-id
+                        new-chapter $ {} (:order-key new-key) (:title title) (:summary summary) (:content content0)
                       d! $ :: :create-chapter-after after-id title summary content0
                       {} (:ok? true) (:chapter new-chapter)
                   (= tool-name |update-chapter-content)
@@ -1049,7 +1054,7 @@
                         {} $ :ok? true
                   (= tool-name |get-chapter-with-neighbors)
                     let
-                        ch $ get-chapter chapter-id
+                        ch $ get chapters0 chapter-id
                       if (some? ch)
                         merge
                           {} (:ok? true) (:chapter ch)
@@ -1132,7 +1137,7 @@
                     prev-interaction $ .-interaction prev-interaction-response
                     outputs $ .-outputs prev-interaction
                     function-calls $ -> outputs
-                      .!filter $ fn (o)
+                      .!filter $ fn (o & args)
                         = (.-type o) |function_call
                   if
                     = 0 $ .-length function-calls
@@ -1144,7 +1149,7 @@
                       js/console.log "\"Processing" (.-length function-calls) "\"function calls"
                       let
                           results-array $ -> function-calls
-                            .!map $ fn (fc)
+                            .!map $ fn (fc & args)
                               let
                                   tool-name $ .-name fc
                                   tool-args $ .-arguments fc
@@ -1300,14 +1305,9 @@
         |style-clear-button $ %{} :CodeEntry (:doc |)
           :code $ quote
             defstyle style-clear-button $ {}
-              "\"&" $ {}
-                :font-size 12
-                :padding "\"4px 12px"
-                :opacity 0.6
-                :cursor :pointer
+              "\"&" $ {} (:font-size 12) (:padding "\"4px 12px") (:opacity 0.6) (:cursor :pointer)
                 :color $ hsl 0 80 60
-              "\"&:hover" $ {}
-                :opacity 1
+              "\"&:hover" $ {} (:opacity 1)
           :examples $ []
         |style-code-content $ %{} :CodeEntry (:doc |)
           :code $ quote
@@ -1334,6 +1334,13 @@
               "\"&" $ {} (:padding |12px)
                 :color $ hsl 0 0 60
                 :font-size |13px
+          :examples $ []
+        |style-empty-text $ %{} :CodeEntry (:doc |)
+          :code $ quote
+            defstyle style-empty-text $ {}
+              "\"&" $ {}
+                :color $ hsl 0 0 65
+                :font-style |italic
           :examples $ []
         |style-fill $ %{} :CodeEntry (:doc |)
           :code $ quote
@@ -1507,6 +1514,15 @@
               "\"&:hover" $ {}
                 :box-shadow $ str "\"1px 1px 4px " (hsl 0 0 0 0.2)
           :examples $ []
+        |style-section-title $ %{} :CodeEntry (:doc |)
+          :code $ quote
+            defstyle style-section-title $ {}
+              "\"&" $ {} (:font-size |12px) (:font-weight |600)
+                :color $ hsl 0 0 50
+                :margin-bottom |4px
+                :text-transform |uppercase
+                :letter-spacing |0.5px
+          :examples $ []
         |style-session-item $ %{} :CodeEntry (:doc |)
           :code $ quote
             defstyle style-session-item $ {}
@@ -1572,7 +1588,7 @@
           :examples $ []
         |submit-message! $ %{} :CodeEntry (:doc |)
           :code $ quote
-            defn submit-message! (cursor chapters state prompt-text search? think? model d!) (hint-fn async)
+            defn submit-message! (cursor chapters state prompt-text search? think? model d! current-chapter-id) (hint-fn async)
               let
                   state1 $ assoc state :messages
                     append-user-message (:messages state) prompt-text
@@ -1581,7 +1597,7 @@
                   model $ :model state
                 d! cursor state1
                 try
-                  js-await $ call-genai-msg-v2! model cursor chapters state1 prompt-text search? think? d! *text *thinking-text
+                  js-await $ call-genai-msg-v2! model cursor chapters state1 prompt-text search? think? d! *text *thinking-text current-chapter-id
                   fn (e)
                     let
                         err-text $ str "\"Failed to load: " e
@@ -1804,94 +1820,64 @@
                       not $ = (:id s) id
                 (:create-chapter)
                   let
-                      new-id $ str (.!now js/Date)
                       chapters $ :chapters store
                       new-key $ if (empty? chapters) mid-id
                         let
                             sorted-keys $ &set:to-list (keys chapters)
-                            sorted-keys2 $ sort sorted-keys &compare
-                          bisect (last sorted-keys2) max-id
-                      new-chapter $ {} (:id new-id) (:order-key new-key) (:title "|New Chapter") (:summary |) (:content |)
+                          bisect
+                            last $ sort sorted-keys &compare
+                            , max-id
+                      new-chapter $ {} (:order-key new-key) (:title "|New Chapter") (:summary |) (:content |)
                     -> store
                       assoc-in ([] :chapters new-key) new-chapter
-                      assoc :current-chapter-id new-id
+                      assoc :current-chapter-id new-key
                 (:create-chapter-with title summary content)
                   let
-                      new-id $ str (.!now js/Date)
                       chapters $ :chapters store
                       new-key $ if (empty? chapters) mid-id
                         let
                             sorted-keys $ &set:to-list (keys chapters)
-                            sorted-keys2 $ sort sorted-keys &compare
-                          bisect (last sorted-keys2) max-id
-                      new-title $ or title "|New Chapter"
-                      new-summary $ or summary |
-                      new-content $ or content |
-                      new-chapter $ {} (:id new-id) (:order-key new-key) (:title new-title) (:summary new-summary) (:content new-content)
+                          bisect
+                            last $ sort sorted-keys &compare
+                            , max-id
+                      new-chapter $ {} (:order-key new-key)
+                        :title $ or title "|New Chapter"
+                        :summary $ or summary |
+                        :content $ or content |
                     -> store
                       assoc-in ([] :chapters new-key) new-chapter
-                      assoc :current-chapter-id new-id
-                (:create-chapter-after after-id title summary content)
+                      assoc :current-chapter-id new-key
+                (:create-chapter-after after-key title summary content)
                   let
-                      new-id $ str (.!now js/Date)
                       chapters $ :chapters store
-                      after-pair $ -> chapters (to-pairs)
-                        filter $ fn (pair)
-                          =
-                            :id $ last pair
-                            , after-id
-                        , first
-                      after-key $ if (some? after-pair) (first after-pair) nil
                       sorted-keys $ sort
                         &set:to-list $ keys chapters
                         , &compare
-                      idx-pair $ if (some? after-key)
-                        -> sorted-keys
-                          map-indexed $ fn (idx k) ([] idx k)
-                          filter $ fn (pair)
-                            = (last pair) after-key
-                          , first
-                      idx $ if (some? idx-pair) (first idx-pair) nil
-                      next-key $ if
-                        and (some? idx)
-                          < idx $ dec (count sorted-keys)
-                        nth sorted-keys $ inc idx
+                      after-idx $ index-of sorted-keys after-key
+                      next-key $ if (>= after-idx 0)
+                        get sorted-keys $ inc after-idx
                         , nil
-                      new-key $ if (some? after-key)
-                        if (some? next-key) (bisect after-key next-key) (bisect after-key max-id)
-                        if (empty? chapters) mid-id $ let
-                            sorted-keys2 $ sort
-                              &set:to-list $ keys chapters
-                              , &compare
-                          bisect (last sorted-keys2) max-id
-                      new-title $ or title "|New Chapter"
-                      new-summary $ or summary |
-                      new-content $ or content |
-                      new-chapter $ {} (:id new-id) (:order-key new-key) (:title new-title) (:summary new-summary) (:content new-content)
+                      new-key $ if (>= after-idx 0)
+                        bisect after-key $ or next-key max-id
+                        if (empty? chapters) mid-id $ bisect (last sorted-keys) max-id
+                      new-chapter $ {} (:order-key new-key)
+                        :title $ or title "|New Chapter"
+                        :summary $ or summary |
+                        :content $ or content |
                     -> store
                       assoc-in ([] :chapters new-key) new-chapter
-                      assoc :current-chapter-id new-id
-                (:select-chapter chapter-id) (assoc store :current-chapter-id chapter-id)
-                (:delete-chapter chapter-id)
-                  let
-                      chapters $ :chapters store
-                      updated-chapters $ pairs-map
-                        filter (to-pairs chapters)
-                          fn (pair)
-                            not=
-                              :id $ last pair
-                              , chapter-id
-                    -> store (assoc :chapters updated-chapters) (assoc :current-chapter-id nil)
-                (:update-chapter chapter-id updates)
-                  let
-                      chapters $ :chapters store
-                      updated-chapters $ map-kv chapters
-                        fn (k v)
-                          [] k $ if
-                            = (:id v) chapter-id
-                            merge v updates
-                            , v
-                    assoc store :chapters updated-chapters
+                      assoc :current-chapter-id new-key
+                (:select-chapter chapter-key) (assoc store :current-chapter-id chapter-key)
+                (:delete-chapter chapter-key)
+                  -> store
+                    update :chapters $ fn (chapters) (dissoc chapters chapter-key)
+                    assoc :current-chapter-id nil
+                (:update-chapter chapter-key updates)
+                  if
+                    contains? (:chapters store) chapter-key
+                    update-in store ([] :chapters chapter-key)
+                      fn (chapter) (merge chapter updates)
+                    , store
                 _ $ do (eprintln "\"unknown op:" op) store
           :examples $ []
       :ns $ %{} :CodeEntry (:doc |)
