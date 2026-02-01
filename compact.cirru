@@ -110,6 +110,79 @@
                 =< 8 nil
                 <> "\"✕" style-abort-close
           :examples $ []
+        |comp-chapter-item $ %{} :CodeEntry (:doc |)
+          :code $ quote
+            defcomp comp-chapter-item (chapter selected? on-select on-delete)
+              div
+                {}
+                  :class-name $ str-spaced style-chapter-item (if selected? style-chapter-item-active nil)
+                  :on-click $ fn (e d!)
+                    on-select (:id chapter) d!
+                div
+                  {} $ :class-name style-chapter-title
+                  <> $ :title chapter
+                if
+                  blank? $ :summary chapter
+                  , nil $ div
+                    {} $ :class-name style-chapter-summary
+                    <> $ :summary chapter
+                span
+                  {} (:class-name style-chapter-delete)
+                    :on-click $ fn (e d!) (-> e :event .!stopPropagation)
+                      on-delete (:id chapter) d!
+                  <> "|✕"
+          :examples $ []
+        |comp-chapter-preview $ %{} :CodeEntry (:doc |)
+          :code $ quote
+            defcomp comp-chapter-preview (chapter)
+              div
+                {} $ :class-name style-preview
+                if (some? chapter)
+                  div ({})
+                    div
+                      {} $ :class-name style-preview-title
+                      <> $ :title chapter
+                    if
+                      blank? $ :summary chapter
+                      , nil $ div
+                        {} $ :class-name style-preview-summary
+                        <> $ :summary chapter
+                    div
+                      {} $ :class-name style-preview-content
+                      memof1-call comp-md-block
+                        -> (:content chapter) (either "\"")
+                        {} $ :class-name style-md-content
+                  div
+                    {} $ :class-name style-empty-state
+                    <> "|Select or create a chapter"
+          :examples $ []
+        |comp-chapter-sidebar $ %{} :CodeEntry (:doc |)
+          :code $ quote
+            defcomp comp-chapter-sidebar (chapters current-id on-select on-create on-delete)
+              let
+                  sorted $ get-sorted-chapters chapters
+                div
+                  {} $ :class-name style-sidebar
+                  div
+                    {} $ :class-name (str-spaced css/row-parted css/row-middle style-sidebar-header)
+                    div ({}) (<> |Chapters)
+                    button
+                      {} (:class-name style-chapter-create)
+                        :on-click $ fn (e d!) (on-create d!)
+                      <> |New
+                  if (empty? sorted)
+                    div
+                      {} $ :class-name style-empty-state
+                      <> "|No chapters"
+                    list->
+                      {} $ :class-name style-chapter-list
+                      -> sorted $ map
+                        fn (ch)
+                          [] (:order-key ch)
+                            comp-chapter-item ch
+                              = (:id ch) current-id
+                              , on-select on-delete
+          :examples $ []
         |comp-container $ %{} :CodeEntry (:doc |)
           :code $ quote
             defcomp comp-container (reel)
@@ -117,6 +190,9 @@
                   store $ :store reel
                   sessions $ or (:sessions store) ([])
                   current-session-id $ :current-session-id store
+                  chapters $ or (:chapters store) ({})
+                  current-chapter-id $ :current-chapter-id store
+                  current-chapter $ get-current-chapter chapters current-chapter-id
                   states $ :states store
                   cursor $ or (:cursor states) ([])
                   state $ or (:data states)
@@ -132,14 +208,6 @@
                             = (:id s) current-session-id
                           , first
                       if (some? current-session) (:is-history? current-session) false
-                  last-assistant $ let
-                      size $ count messages
-                      last-msg $ if (> size 0) (last messages) nil
-                    if
-                      and (some? last-msg)
-                        = :assistant $ :role last-msg
-                      :content last-msg
-                      :answer state
                   model-plugin $ use-modal-menu (>> states :model)
                     {} (; :title "|Select model")
                       :style $ {} (:width 300)
@@ -174,126 +242,138 @@
                             on-close d!
                           , on-close
                 div
-                  {} $ :class-name (str-spaced css/preset css/global css/column css/fullscreen css/gap8 style-app-global)
+                  {} $ :class-name (str-spaced css/preset css/global css/column css/fullscreen style-app-global)
+                  comp-top-bar
                   div
-                    {} $ :class-name (str-spaced css/expand style-message-area)
+                    {} $ :class-name style-main-layout
+                    comp-chapter-sidebar chapters current-chapter-id
+                      fn (chapter-id d!)
+                        d! $ :: :select-chapter chapter-id
+                      fn (d!)
+                        d! $ :: :create-chapter
+                      fn (chapter-id d!)
+                        d! $ :: :delete-chapter chapter-id
+                    comp-chapter-preview current-chapter
                     div
-                      {}
-                        :class-name $ str-spaced css/row-parted
-                        :style $ {} (:padding |8px)
-                      div $ {}
+                      {} $ :class-name (str-spaced css/column style-chat-panel)
                       div
-                        {} (:class-name css/row-middle) (:title |History)
-                          :style $ {} (:cursor :pointer)
-                          :on-click $ fn (e d!) (.show sessions-plugin d!)
+                        {} $ :class-name (str-spaced css/column css/expand style-message-area)
                         div
-                          {} $ :class-name style-history-button
-                          comp-i |clock
-                        =< 4 nil
-                        if
-                          > (count sessions) 0
-                          <>
-                            str $ count sessions
-                            str-spaced css/font-fancy style-history-count
-                    div
-                      {} $ :class-name (str-spaced css/column style-message-list)
-                      list->
-                        {} $ :class-name (str-spaced css/column css/gap8)
-                        -> messages $ map-indexed
-                          fn (idx msg)
-                            [] idx $ let
-                                role $ :role msg
-                                content $ :content msg
-                                thinking $ :thinking msg
-                              div
-                                {} $ :class-name
-                                  str-spaced style-message-item $ if (= role :assistant) style-message-assistant style-message-user
-                                div
-                                  {} $ :class-name style-message-role
-                                  <> $ if (= role :assistant) |Assistant |You
-                                if
-                                  not $ blank? thinking
-                                  div
-                                    {} $ :class-name style-thinking
-                                    memof1-call comp-md-block
-                                      -> thinking $ either "\""
-                                      {} $ :class-name style-md-content
-                                if (= role :assistant)
-                                  if (json-pattern? content)
-                                    pre $ {} (:class-name style-code-content) (:inner-text content)
-                                    memof1-call comp-md-block
-                                      -> content $ either "\""
-                                      {} $ :class-name style-md-content
-                                  pre $ {} (:class-name style-message-text) (:inner-text content)
-                                if
-                                  and (= role :assistant)
-                                    or done? $ not= idx
-                                      dec $ count messages
-                                  div
-                                    {} $ :class-name (str-spaced css/row-middle css/gap8 style-message-actions)
-                                    if chrome-extension?
-                                      comp-fill $ either content "\""
-                                      , nil
-                                    comp-copy $ either content "\""
-                                  , nil
-                      if
-                        and
-                          > (count messages) 0
-                          :done? state
-                          not is-viewing-history?
-                        div
-                          {} $ :class-name (str-spaced css/row-middle css/gap8 style-reply-actions)
-                          button
-                            {}
-                              :class-name $ str-spaced css/button style-reply-button
-                              :on-click $ fn (e d!)
-                                .show reply-plugin d! $ fn (text)
-                                  submit-message! cursor state text (:search? message-box-state) (:think? message-box-state) model d!
-                            <> |Reply
-                        , nil
-                      if (:loading? state)
-                        div ({}) (memof1-call-by :abort-loading comp-abort "\"Loading...")
-                      div
-                        {} $ :class-name css/row-parted
-                        div
-                          {} $ :class-name (str-spaced css/row-middle css/gap8)
-                          if (:done? state) nil $ div
-                            {} $ :style
-                              {} (:display :flex) (:justify-content :center) (:align-items :center)
-                            memof1-call-by :abort-streaming comp-abort "\"Streaming..."
-                        if (:done? state)
+                          {}
+                            :class-name $ str-spaced css/row-parted
+                            :style $ {} (:padding |8px)
                           div $ {}
-                            :class-name $ str-spaced css/row-middle css/gap8
-                    =< nil 200
-                  comp-message-box (>> states :message-box)
-                    a $ {}
-                      :inner-text $ or (turn-str model) "\"-"
-                      :class-name $ str-spaced style-a-toggler
-                      :style $ {}
-                      :on-click $ fn (e d!)
-                        ; d! $ :: :change-model
-                        .show model-plugin d!
-                    fn (text search? think? d!)
-                      do
-                        when
+                          div
+                            {} (:class-name css/row-middle) (:title |History)
+                              :style $ {} (:cursor :pointer)
+                              :on-click $ fn (e d!) (.show sessions-plugin d!)
+                            div
+                              {} $ :class-name style-history-button
+                              comp-i |clock
+                            =< 4 nil
+                            if
+                              > (count sessions) 0
+                              <>
+                                str $ count sessions
+                                str-spaced css/font-fancy style-history-count
+                        div
+                          {} $ :class-name (str-spaced css/column style-message-list)
+                          list->
+                            {} $ :class-name (str-spaced css/column css/gap8)
+                            -> messages $ map-indexed
+                              fn (idx msg)
+                                [] idx $ let
+                                    role $ :role msg
+                                    content $ :content msg
+                                    thinking $ :thinking msg
+                                  div
+                                    {} $ :class-name
+                                      str-spaced style-message-item $ if (= role :assistant) style-message-assistant style-message-user
+                                    div
+                                      {} $ :class-name style-message-role
+                                      <> $ if (= role :assistant) |Assistant |You
+                                    if
+                                      not $ blank? thinking
+                                      div
+                                        {} $ :class-name style-thinking
+                                        memof1-call comp-md-block
+                                          -> thinking $ either "\""
+                                          {} $ :class-name style-md-content
+                                    if (= role :assistant)
+                                      if (json-pattern? content)
+                                        pre $ {} (:class-name style-code-content) (:inner-text content)
+                                        memof1-call comp-md-block
+                                          -> content $ either "\""
+                                          {} $ :class-name style-md-content
+                                      pre $ {} (:class-name style-message-text) (:inner-text content)
+                                    if
+                                      and (= role :assistant)
+                                        or done? $ not= idx
+                                          dec $ count messages
+                                      div
+                                        {} $ :class-name (str-spaced css/row-middle css/gap8 style-message-actions)
+                                        if chrome-extension?
+                                          comp-fill $ either content "\""
+                                          , nil
+                                        comp-copy $ either content "\""
+                                      , nil
+                        if
                           and
                             > (count messages) 0
                             :done? state
-                            nil? current-session-id
-                          d! $ :: :save-session state
-                        d! cursor $ -> state
-                          assoc :messages $ []
-                          assoc :answer nil
-                          assoc :thinking nil
-                          assoc :done? false
-                        d! $ :: :session :session-id nil
-                        submit-message! cursor
-                          -> state
-                            assoc :messages $ []
-                            assoc :answer nil
-                            assoc :thinking nil
-                            assoc :done? false
-                          , text search? think? model d!
+                            not is-viewing-history?
+                          div
+                            {} $ :class-name (str-spaced css/row-middle css/gap8 style-reply-actions)
+                            button
+                              {}
+                                :class-name $ str-spaced css/button style-reply-button
+                                :on-click $ fn (e d!)
+                                  .show reply-plugin d! $ fn (text)
+                                    submit-message! cursor state text (:search? message-box-state) (:think? message-box-state) model d!
+                              <> |Reply
+                          , nil
+                        if (:loading? state)
+                          div ({}) (memof1-call-by :abort-loading comp-abort "\"Loading...")
+                        div
+                          {} $ :class-name css/row-parted
+                          div
+                            {} $ :class-name (str-spaced css/row-middle css/gap8)
+                            if (:done? state) nil $ div
+                              {} $ :style
+                                {} (:display :flex) (:justify-content :center) (:align-items :center)
+                              memof1-call-by :abort-streaming comp-abort "\"Streaming..."
+                          if (:done? state)
+                            div $ {}
+                              :class-name $ str-spaced css/row-middle css/gap8
+                      comp-message-box (>> states :message-box)
+                        a $ {}
+                          :inner-text $ or (turn-str model) "\"-"
+                          :class-name $ str-spaced style-a-toggler
+                          :style $ {}
+                          :on-click $ fn (e d!)
+                            ; d! $ :: :change-model
+                            .show model-plugin d!
+                        fn (text search? think? d!)
+                          do
+                            when
+                              and
+                                > (count messages) 0
+                                :done? state
+                                nil? current-session-id
+                              d! $ :: :save-session state
+                            d! cursor $ -> state
+                              assoc :messages $ []
+                              assoc :answer nil
+                              assoc :thinking nil
+                              assoc :done? false
+                            d! $ :: :session :session-id nil
+                            submit-message! cursor
+                              -> state
+                                assoc :messages $ []
+                                assoc :answer nil
+                                assoc :thinking nil
+                                assoc :done? false
+                              , text search? think? model d!
                   model-plugin.render
                   reply-plugin.render
                   sessions-plugin.render
@@ -436,6 +516,13 @@
                                   d! $ :: :remove-session session-id
                               <> "|✕"
           :examples $ []
+        |comp-top-bar $ %{} :CodeEntry (:doc |)
+          :code $ quote
+            defcomp comp-top-bar () $ div
+              {} $ :class-name (str-spaced css/row-parted css/row-middle style-top-bar)
+              <> |Toadflax
+              <> |Config
+          :examples $ []
         |create-session $ %{} :CodeEntry (:doc |)
           :code $ quote
             defn create-session (messages model)
@@ -466,6 +553,18 @@
           :code $ quote
             defn generate-session-id () $ str (js/Date.now)
           :examples $ []
+        |get-current-chapter $ %{} :CodeEntry (:doc |)
+          :code $ quote
+            defn get-current-chapter (chapters chapter-id)
+              if (nil? chapter-id) nil $ let
+                  found $ -> chapters (to-pairs)
+                    filter $ fn (pair)
+                      =
+                        :id $ last pair
+                        , chapter-id
+                    first
+                if (some? found) (last found) nil
+          :examples $ []
         |get-gemini-key! $ %{} :CodeEntry (:doc |)
           :code $ quote
             defn get-gemini-key! () $ let
@@ -478,6 +577,14 @@
                   js/localStorage.setItem "\"gemini-key" v
                   , v
                 , key
+          :examples $ []
+        |get-sorted-chapters $ %{} :CodeEntry (:doc |)
+          :code $ quote
+            defn get-sorted-chapters (chapters)
+              -> chapters (to-pairs) (&set:to-list)
+                sort $ fn (a b)
+                  &compare (first a) (first b)
+                map last
           :examples $ []
         |json-pattern? $ %{} :CodeEntry (:doc |)
           :code $ quote
@@ -560,6 +667,71 @@
               "\"&:hover" $ {} (:color "\"#777")
                 :background-color $ hsl 0 0 100
           :examples $ []
+        |style-chapter-create $ %{} :CodeEntry (:doc |)
+          :code $ quote
+            defstyle style-chapter-create $ {}
+              "\"&" $ {} (:padding "|4px 8px") (:border-radius |8px)
+                :border $ str "\"1px solid " (hsl 0 0 85)
+                :background-color $ hsl 0 0 100
+                :cursor :pointer
+                :font-size |12px
+              "\"&:hover" $ {}
+                :background-color $ hsl 0 0 96
+          :examples $ []
+        |style-chapter-delete $ %{} :CodeEntry (:doc |)
+          :code $ quote
+            defstyle style-chapter-delete $ {}
+              "\"&" $ {} (:position :absolute) (:right |8px) (:top |8px) (:font-size |12px)
+                :color $ hsl 0 80 60
+                :opacity 0.4
+                :cursor :pointer
+              "\"&:hover" $ {} (:opacity 1)
+          :examples $ []
+        |style-chapter-item $ %{} :CodeEntry (:doc |)
+          :code $ quote
+            defstyle style-chapter-item $ {}
+              "\"&" $ {} (:padding "|8px 10px") (:border-radius |8px)
+                :border $ str "\"1px solid " (hsl 0 0 90)
+                :background-color $ hsl 0 0 100
+                :cursor :pointer
+                :position :relative
+              "\"&:hover" $ {}
+                :background-color $ hsl 0 0 96
+          :examples $ []
+        |style-chapter-item-active $ %{} :CodeEntry (:doc |)
+          :code $ quote
+            defstyle style-chapter-item-active $ {}
+              "\"&" $ {}
+                :background-color $ hsl 200 80 96
+                :border $ str "\"1px solid " (hsl 200 80 80)
+          :examples $ []
+        |style-chapter-list $ %{} :CodeEntry (:doc |)
+          :code $ quote
+            defstyle style-chapter-list $ {}
+              "\"&" $ {} (:display :flex) (:flex-direction :column) (:gap |8px)
+          :examples $ []
+        |style-chapter-summary $ %{} :CodeEntry (:doc |)
+          :code $ quote
+            defstyle style-chapter-summary $ {}
+              "\"&" $ {} (:margin-top |4px) (:font-size |12px)
+                :color $ hsl 0 0 50
+          :examples $ []
+        |style-chapter-title $ %{} :CodeEntry (:doc |)
+          :code $ quote
+            defstyle style-chapter-title $ {}
+              "\"&" $ {} (:font-size |14px) (:font-weight "\"600")
+                :color $ hsl 0 0 20
+          :examples $ []
+        |style-chat-panel $ %{} :CodeEntry (:doc |)
+          :code $ quote
+            defstyle style-chat-panel $ {}
+              "\"&" $ {} (:width |400px)
+                :border-left $ str "\"1px solid " (hsl 0 0 92)
+                :background-color $ hsl 0 0 99
+                :display :flex
+                :flex-direction :column
+                :min-width 0
+          :examples $ []
         |style-checkbox $ %{} :CodeEntry (:doc |)
           :code $ quote
             defstyle style-checkbox $ {}
@@ -588,6 +760,13 @@
                 :color $ hsl 0 90 45
               |&:active $ {} (:opacity 1)
                 :color $ hsl 0 90 40
+          :examples $ []
+        |style-empty-state $ %{} :CodeEntry (:doc |)
+          :code $ quote
+            defstyle style-empty-state $ {}
+              "\"&" $ {} (:padding |12px)
+                :color $ hsl 0 0 60
+                :font-size |13px
           :examples $ []
         |style-fill $ %{} :CodeEntry (:doc |)
           :code $ quote
@@ -624,6 +803,11 @@
                 :color $ hsl 200 80 60
                 :font-size |12px
                 :display :inline-block
+          :examples $ []
+        |style-main-layout $ %{} :CodeEntry (:doc |)
+          :code $ quote
+            defstyle style-main-layout $ {}
+              "\"&" $ {} (:display :flex) (:flex "\"1") (:min-height 0)
           :examples $ []
         |style-md-content $ %{} :CodeEntry (:doc |)
           :code $ quote
@@ -713,6 +897,32 @@
               "\"&:hover" $ {}
                 :box-shadow $ str "\"1px 1px 4px " (hsl 0 0 0 0.2)
           :examples $ []
+        |style-preview $ %{} :CodeEntry (:doc |)
+          :code $ quote
+            defstyle style-preview $ {}
+              "\"&" $ {} (:flex "\"1") (:min-width 0) (:padding "|16px 20px") (:overflow :auto)
+          :examples $ []
+        |style-preview-content $ %{} :CodeEntry (:doc |)
+          :code $ quote
+            defstyle style-preview-content $ {}
+              "\"&" $ {} (:padding "|8px 0")
+                :color $ hsl 0 0 20
+          :examples $ []
+        |style-preview-summary $ %{} :CodeEntry (:doc |)
+          :code $ quote
+            defstyle style-preview-summary $ {}
+              "\"&" $ {} (:font-size |13px)
+                :color $ hsl 0 0 45
+                :margin-bottom |12px
+                :line-height "\"1.5"
+          :examples $ []
+        |style-preview-title $ %{} :CodeEntry (:doc |)
+          :code $ quote
+            defstyle style-preview-title $ {}
+              "\"&" $ {} (:font-size |20px) (:font-weight "\"600")
+                :color $ hsl 0 0 20
+                :margin-bottom |8px
+          :examples $ []
         |style-reply-actions $ %{} :CodeEntry (:doc |)
           :code $ quote
             defstyle style-reply-actions $ {}
@@ -748,6 +958,21 @@
             defstyle style-sessions-list $ {}
               |& $ {} (:flex |1) (:overflow-y :auto) (:min-width |300px)
           :examples $ []
+        |style-sidebar $ %{} :CodeEntry (:doc |)
+          :code $ quote
+            defstyle style-sidebar $ {}
+              "\"&" $ {} (:width |240px)
+                :border-right $ str "\"1px solid " (hsl 0 0 92)
+                :background-color $ hsl 0 0 98
+                :overflow-y :auto
+                :padding "|12px 12px"
+          :examples $ []
+        |style-sidebar-header $ %{} :CodeEntry (:doc |)
+          :code $ quote
+            defstyle style-sidebar-header $ {}
+              "\"&" $ {} (:padding "|4px 4px 8px 4px") (:font-size 12)
+                :color $ hsl 0 0 50
+          :examples $ []
         |style-submit $ %{} :CodeEntry (:doc |)
           :code $ quote
             defstyle style-submit $ {}
@@ -771,6 +996,13 @@
                 :margin-bottom 12
                 :border $ str "\"1px solid " (hsl 0 0 90)
               "\"& .md-p" $ {} (:margin "\"4px 0")
+          :examples $ []
+        |style-top-bar $ %{} :CodeEntry (:doc |)
+          :code $ quote
+            defstyle style-top-bar $ {}
+              "\"&" $ {} (:height |48px) (:padding "|0 16px")
+                :border-bottom $ str "\"1px solid " (hsl 0 0 90)
+                :background-color $ hsl 0 0 98
           :examples $ []
         |submit-message! $ %{} :CodeEntry (:doc |)
           :code $ quote
@@ -821,7 +1053,7 @@
             |@google/genai :refer $ GoogleGenAI Modality
             feather.core :refer $ comp-i
             respo-alerts.core :refer $ [] use-modal-menu use-prompt use-drawer
-            bisection-key.core :refer $ bisect
+            bisection-key.core :refer $ bisect min-id mid-id max-id
         :examples $ []
     |app.config $ %{} :FileEntry
       :defs $ {}
@@ -975,6 +1207,8 @@
               :sessions $ []
               :current-session-id nil
               :model nil
+              :chapters $ {}
+              :current-chapter-id nil
           :examples $ []
       :ns $ %{} :CodeEntry (:doc |)
         :code $ quote (ns app.schema)
@@ -1002,6 +1236,40 @@
                     or (:sessions store) ([])
                     fn (s)
                       not $ = (:id s) id
+                (:create-chapter)
+                  let
+                      new-id $ str (.now js/Date)
+                      chapters $ :chapters store
+                      new-key $ if (empty? chapters) mid-id
+                        let
+                            sorted-keys $ &set:to-list (keys chapters)
+                            sorted-keys2 $ sort sorted-keys &compare
+                          bisect (last sorted-keys2) max-id
+                      new-chapter $ {} (:id new-id) (:order-key new-key) (:title "|New Chapter") (:summary |) (:content |)
+                    -> store
+                      assoc-in ([] :chapters new-key) new-chapter
+                      assoc :current-chapter-id new-id
+                (:select-chapter chapter-id) (assoc store :current-chapter-id chapter-id)
+                (:delete-chapter chapter-id)
+                  let
+                      chapters $ :chapters store
+                      updated-chapters $ pairs-map
+                        filter (to-pairs chapters)
+                          fn (pair)
+                            not=
+                              :id $ last pair
+                              , chapter-id
+                    -> store (assoc :chapters updated-chapters) (assoc :current-chapter-id nil)
+                (:update-chapter chapter-id updates)
+                  let
+                      chapters $ :chapters store
+                      updated-chapters $ map-kv chapters
+                        fn (k v)
+                          [] k $ if
+                            = (:id v) chapter-id
+                            merge v updates
+                            , v
+                    assoc store :chapters updated-chapters
                 _ $ do (eprintln "\"unknown op:" op) store
           :examples $ []
       :ns $ %{} :CodeEntry (:doc |)
@@ -1009,4 +1277,5 @@
           ns app.updater $ :require
             respo.cursor :refer $ update-states update-states-merge
             app.comp.container :refer $ save-current-session generate-session-id
+            bisection-key.core :refer $ bisect min-id mid-id max-id
         :examples $ []
