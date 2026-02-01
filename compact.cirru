@@ -1,7 +1,7 @@
 
 {} (:about "|file is generated - never edit directly; learn cr edit/tree workflows before changing") (:package |app)
   :configs $ {} (:init-fn |app.main/main!) (:reload-fn |app.main/reload!) (:version |0.0.1)
-    :modules $ [] |respo.calcit/ |lilac/ |memof/ |respo-ui.calcit/ |reel.calcit/ |respo-markdown.calcit/ |alerts.calcit/ |respo-feather.calcit/
+    :modules $ [] |respo.calcit/ |lilac/ |memof/ |respo-ui.calcit/ |reel.calcit/ |respo-markdown.calcit/ |alerts.calcit/ |respo-feather.calcit/ |bisection-key/
   :entries $ {}
   :files $ {}
     |app.comp.container $ %{} :FileEntry
@@ -816,11 +816,12 @@
             app.config :refer $ dev? chrome-extension?
             respo-md.comp.md :refer $ comp-md-block style-code-block
             respo-ui.comp :refer $ comp-copy comp-close
-            "|../extension/get-selected" :refer $ get-selected
+            |../extension/get-selected :refer $ get-selected
             memof.once :refer $ memof1-call memof1-call-by
-            "|@google/genai" :refer $ GoogleGenAI Modality
+            |@google/genai :refer $ GoogleGenAI Modality
             feather.core :refer $ comp-i
             respo-alerts.core :refer $ [] use-modal-menu use-prompt use-drawer
+            bisection-key.core :refer $ bisect
         :examples $ []
     |app.config $ %{} :FileEntry
       :defs $ {}

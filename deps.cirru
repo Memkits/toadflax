@@ -8,3 +8,4 @@
     |Respo/respo.calcit |0.16.27
     |calcit-lang/lilac |main
     |calcit-lang/memof |0.0.18
+    |calcit-lang/bisection-key |0.0.16
