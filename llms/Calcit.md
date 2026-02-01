@@ -75,12 +75,12 @@ Calcit 程序使用 `cr` 命令：
 - `cr` 或 `cr compact.cirru` - 代码解释执行，默认读取 config 执行 init-fn 定义的入口
 - `cr compact.cirru js` - 编译生成 JavaScript 代码
 - `cr -1 <filepath>` - 执行一次然后退出（不进入监听模式）
-- `cr --check-only` - 仅检查代码正确性，不执行程序
+- `cr -1 --check-only` - 仅检查代码正确性，不执行程序
   - 对 init_fn 和 reload_fn 进行预处理验证
   - 输出：预处理进度、warnings、检查耗时
   - 用于 CI/CD 或快速验证代码修改
 - `cr js -1` - 检查代码正确性，生成 JavaScript(不进入监听模式)
-- `cr js --check-only` - 检查代码正确性，不生成 JavaScript
+- `cr js -1 --check-only` - 检查代码正确性，不生成 JavaScript
 - `cr eval '<code>' [--dep <module>...]` - 执行一段 Calcit 代码片段，用于快速验证写法
   - `--dep` 参数可以加载 `~/.config/calcit/modules/` 中的模块（直接使用模块名）
   - 示例：`cr eval 'echo 1' --dep calcit.std`
@@ -347,6 +347,37 @@ cr tree replace namespace/def -p '3,2,2,5,2,4,1,2' -e 'let ((x 1)) (+ x task)'
   ```
   详细参数和示例使用 `cr tree <command> --help` 查看。
 
+### 复杂表达式分段组装策略 (Incremental Assembly) ⭐⭐⭐
+
+当需要构造非常复杂的嵌套结构（例如递归循环、多级 `let` 或 `if`）时，直接通过 `-e` 传入单行 Cirru 代码容易遇到 shell 转义、括号对齐或长度限制等问题。推荐使用**分段占位组装**策略：
+
+1. **确立骨架**：先替换目标节点为一个带有占位符的简单 JSON 结构。
+
+   ```bash
+   cr tree replace ns/def -p '4,0' -j '["let", [["x", "1"]], "BODY"]'
+   ```
+
+2. **定位占位符**：使用 `tree show` 确认占位符的具体路径。
+
+   ```bash
+   cr tree show ns/def -p '4,0'
+   # 输出显示 "BODY" 在索引 2，即路径 [4,0,2]
+   ```
+
+3. **填充内容**：针对占位符路径进行下一层的精细替换。
+
+   ```bash
+   cr tree replace ns/def -p '4,0,2' -j '["if", ["=", "x", "1"], "TRUE_BRANCH", "FALSE_BRANCH"]'
+   ```
+
+4. **递归迭代**：重复上述步骤直到所有占位符（`TRUE_BRANCH`, `FALSE_BRANCH` 等）都被替换为最终逻辑。
+
+**优势：**
+
+- **精确性**：使用 JSON 格式 (`-j`) 可以完全避免 Cirru 缩进或括号解析的歧义。
+- **低风险**：每次只修改一小部分，出错时容易通过 `tree show` 快速定位。
+- **绕过限制**：解决某些终端对超长命令行参数的限制。
+
 ### 代码编辑 (`cr edit`)
 
 直接编辑 compact.cirru 项目代码，支持三种输入方式：
@@ -523,7 +554,7 @@ defn add-numbers (a b)
 
 **常见类型：** `:number` `:string` `:bool` `:list` `:map` `:set` `:tuple` `:keyword` `:nil`
 
-**验证类型：** `cr --check-only` 或 `cr ir -1` 查看 IR 中的类型信息
+**验证类型：** 运行或者编译时会先完成校验.
 
 ### 其他易错点
 
@@ -864,7 +895,3 @@ cr eval 'thread-first x (+ 1) (* 2)'  # 用 thread-first 代替 ->
 | `unexpected format`          | 语法错误                | 用 `cr cirru parse '<code>'` 验证 |
 
 **调试命令：** `cr query error`（会显示详细的错误堆栈和提示）
-
----
-
-Also read `llms/Respo.md` for framework usage.

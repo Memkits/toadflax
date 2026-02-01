@@ -1,4 +1,4 @@
-Developer runs `cr js` to watch build JavaScript, and `yarn vite` to start a local server. LLMs edits program by running `cr` commands, and then triggers re-compiling.
+Developer runs `cr js` to watch build JavaScript, and `yarn vite` to start a local server. LLMs edits program by running `cr` commands, and then triggers re-compiling. 注意使用 cr 命令, 避免直接修改 `compact.cirru`.
 
 - [llms/Calcit.md](llms/Calcit.md) | Calcit 语言工具指令，包括 `cr` 命令等。
 - [llms/Respo.md](llms/Respo.md) | UI 库使用说明。
