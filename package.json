@@ -13,7 +13,7 @@
     "vite": "^8.0.0-beta.11"
   },
   "scripts": {
-    "build": "yarn vite build --base ./ && rm -rfv extension/dist && cp -vr dist extension/"
+    "build": "yarn vite build --base ./"
   },
   "version": "0.0.1",
   "packageManager": "yarn@4.12.0"

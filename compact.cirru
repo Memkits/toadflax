@@ -62,283 +62,6 @@
                       > (.-length tools-list) 0
                       , tools-list js/undefined
           :examples $ []
-        |call-genai-msg! $ %{} :CodeEntry (:doc |)
-          :code $ quote
-            defn call-genai-msg! (variant cursor chapters state prompt-text search? think? d! *text *thinking-text) (hint-fn async)
-              if (nil? @*gen-ai-new)
-                reset! *gen-ai-new $ new GoogleGenAI
-                  js-object $ :apiKey (get-gemini-key!)
-              if-let
-                abort $ deref *abort-control
-                do (js/console.warn "\"Aborting prev") (.!abort abort)
-              let
-                  selected $ if (.includes? prompt-text "\"{{selected}}")
-                    js-await $ get-selected
-                  gen-ai $ let
-                      ai @*gen-ai-new
-                    , ai
-                  model $ pick-model variant
-                  content $ .!replace prompt-text "\"{{selected}}" (or selected "\"<未找到选中内容>")
-                  json? $ or (.!includes prompt-text "\"{{json}}") (.!includes prompt-text "\"{{JSON}}")
-                  pro? $ .!includes model "\"pro"
-                  has-url? $ or (.!includes prompt-text "\"http://") (.!includes prompt-text "\"https://")
-                  messages0 $ or (:messages state) ([])
-                  messages1 $ upsert-assistant-message messages0 "\"" nil
-                  function-declarations chapter-tools-declarations
-                  tool-object $ js-object (:functionDeclarations function-declarations)
-                  tools-array $ let
-                      t $ ->
-                        js-array tool-object
-                          if search? $ js-object
-                            :googleSearch $ js-object
-                          if has-url? $ js-object
-                            :urlContext $ js-object
-                        .!filter $ fn (x & _a) x
-                    if
-                      = 0 $ .-length t
-                      , js/undefined t
-                  handle-tool-call! $ fn (tool-name raw-args)
-                    let
-                        args0 $ if (string? raw-args) (js/JSON.parse raw-args) raw-args
-                        chapters0 $ or chapters ({})
-                        sorted-keys $ sort
-                          &set:to-list $ keys chapters0
-                          , &compare
-                        find-pair $ fn (chapter-id)
-                          -> chapters0 (to-pairs)
-                            filter $ fn (pair)
-                              =
-                                :id $ last pair
-                                , chapter-id
-                            , first
-                        get-chapter $ fn (chapter-id)
-                          let
-                              pair $ find-pair chapter-id
-                            if (some? pair) (last pair) nil
-                        chapter-key $ fn (chapter-id)
-                          let
-                              pair $ find-pair chapter-id
-                            if (some? pair) (first pair) nil
-                        neighbor-summaries $ fn (chapter-id)
-                          let
-                              key $ chapter-key chapter-id
-                              idx-pair $ if (some? key)
-                                -> sorted-keys
-                                  map-indexed $ fn (idx k) ([] idx k)
-                                  filter $ fn (pair)
-                                    = (last pair) key
-                                  , first
-                              idx $ if (some? idx-pair) (first idx-pair) nil
-                              prev-key $ if
-                                and (some? idx) (> idx 0)
-                                nth sorted-keys $ dec idx
-                                , nil
-                              next-key $ if
-                                and (some? idx)
-                                  < idx $ dec (count sorted-keys)
-                                nth sorted-keys $ inc idx
-                                , nil
-                              prev-ch $ if (some? prev-key) (get chapters0 prev-key) nil
-                              next-ch $ if (some? next-key) (get chapters0 next-key) nil
-                            {}
-                              :previous $ if (some? prev-ch)
-                                select-keys prev-ch $ [] :id :title :summary
-                                , nil
-                              :next $ if (some? next-ch)
-                                select-keys next-ch $ [] :id :title :summary
-                                , nil
-                        title $ or (.-title args0) "\"Untitled"
-                        summary $ or (.-summary args0) |
-                        content0 $ or (.-content args0) |
-                        chapter-id $ or (.-chapterId args0) (.-chapter_id args0)
-                        after-id $ or (.-afterChapterId args0) (.-after_chapter_id args0)
-                      cond
-                          = tool-name |list-chapters
-                          {} (:ok? true)
-                            :chapters $ map sorted-keys
-                              fn (k)
-                                let
-                                    ch $ get chapters0 k
-                                  {}
-                                    :id $ :id ch
-                                    :order-key $ :order-key ch
-                                    :title $ :title ch
-                                    :summary $ :summary ch
-                        (= tool-name |get-chapter)
-                          let
-                              ch $ get-chapter chapter-id
-                            if (some? ch)
-                              {} (:ok? true) (:chapter ch)
-                              {} (:ok? false) (:error "\"Chapter not found")
-                        (= tool-name |create-chapter)
-                          let
-                              new-id $ str (.!now js/Date)
-                              new-key $ if (empty? chapters0) mid-id
-                                let
-                                    sorted-keys2 $ sort
-                                      &set:to-list $ keys chapters0
-                                      , &compare
-                                  bisect (last sorted-keys2) max-id
-                              new-chapter $ {} (:id new-id) (:order-key new-key) (:title title) (:summary summary) (:content content0)
-                            d! $ :: :create-chapter-with title summary content0
-                            {} (:ok? true) (:chapter new-chapter)
-                        (= tool-name |create-chapter-after)
-                          let
-                              after-key $ chapter-key after-id
-                              sorted-keys2 $ sort
-                                &set:to-list $ keys chapters0
-                                , &compare
-                              idx-pair $ if (some? after-key)
-                                -> sorted-keys2
-                                  map-indexed $ fn (idx k) ([] idx k)
-                                  filter $ fn (pair)
-                                    = (last pair) after-key
-                                  , first
-                              idx $ if (some? idx-pair) (first idx-pair) nil
-                              next-key $ if
-                                and (some? idx)
-                                  < idx $ dec (count sorted-keys2)
-                                nth sorted-keys2 $ inc idx
-                                , nil
-                              new-key $ if (some? after-key)
-                                if (some? next-key) (bisect after-key next-key) (bisect after-key max-id)
-                                if (empty? chapters0) mid-id $ let
-                                    sorted-keys3 $ sort
-                                      &set:to-list $ keys chapters0
-                                      , &compare
-                                  bisect (last sorted-keys3) max-id
-                              new-id $ str (.!now js/Date)
-                              new-chapter $ {} (:id new-id) (:order-key new-key) (:title title) (:summary summary) (:content content0)
-                            d! $ :: :create-chapter-after after-id title summary content0
-                            {} (:ok? true) (:chapter new-chapter)
-                        (= tool-name |update-chapter-content)
-                          do
-                            d! $ :: :update-chapter chapter-id
-                              {} $ :content content0
-                            {} $ :ok? true
-                        (= tool-name |update-chapter-meta)
-                          let
-                              title1 $ .-title args0
-                              summary1 $ .-summary args0
-                              updates $ merge
-                                if (some? title1)
-                                  {} $ :title title1
-                                  {}
-                                if (some? summary1)
-                                  {} $ :summary summary1
-                                  {}
-                            do
-                              d! $ :: :update-chapter chapter-id updates
-                              {} $ :ok? true
-                        (= tool-name |get-chapter-with-neighbors)
-                          let
-                              ch $ get-chapter chapter-id
-                            if (some? ch)
-                              merge
-                                {} (:ok? true) (:chapter ch)
-                                neighbor-summaries chapter-id
-                              {} (:ok? false) (:error "\"Chapter not found")
-                        true $ {} (:ok? false) (:error "\"Unknown tool")
-                  sdk-result $ js-await
-                    .!generateContentStream (.-models gen-ai)
-                      js-object (:model model)
-                        :contents $ messages->gemini messages0
-                        :config $ js/Object.assign
-                          js-object
-                            :thinkingConfig $ if think?
-                              js-object
-                                :thinkingBudget $ get-env "\"think-budget" (if pro? 3200 800)
-                                :includeThoughts think?
-                              js-object (:thinkingBudget 0) (:includeThoughts false)
-                            :httpOptions $ js-object (:baseUrl |https://ja3.chenyong.life)
-                            :tools tools-array
-                            :abortSignal $ let
-                                abort $ new js/AbortController
-                              reset! *abort-control abort
-                              .-signal abort
-                          if json?
-                            js-object $ "\"responseMimeType" "\"application/json"
-                            , js/undefined
-                do
-                  js/setTimeout $ fn ()
-                    d! $ :: :states-merge cursor state
-                      {} (:answer nil) (:thinking nil) (:loading? true) (:done? false) (:messages messages1)
-                  let
-                      *tool-call $ atom nil
-                    js-await $ js-for-await sdk-result
-                      fn (? chunk)
-                        if (some? chunk)
-                          let
-                              part js/chunk.candidates?.[0]?.content?.parts?.[0]
-                              fn-call $ if (some? part) (.-functionCall part) nil
-                              is-thinking? $ if (some? part) (.-thought part) false
-                              t $ if (some? part) (.-text part) (.-text chunk)
-                            if (some? fn-call) (reset! *tool-call fn-call)
-                              let
-                                  text $ or t (-> chunk .?-promptFeedback .?-blockReason) |__BLANK__
-                                if is-thinking? (swap! *thinking-text str text) (swap! *text str text)
-                                d! $ :: :states-merge cursor state
-                                  {} (:answer @*text) (:thinking @*thinking-text) (:loading? false) (:done? false)
-                                    :messages $ upsert-assistant-message messages1 @*text @*thinking-text
-                        d! $ :: :states-merge cursor state
-                          {} (:answer @*text) (:thinking @*thinking-text) (:loading? false) (:done? false)
-                            :messages $ upsert-assistant-message messages1 @*text @*thinking-text
-                    when (some? @*tool-call)
-                      let
-                          fn-call @*tool-call
-                          tool-name $ .-name fn-call
-                          tool-args $ .-args fn-call
-                          tool-result $ handle-tool-call! tool-name tool-args
-                          tool-contents $ -> (messages->gemini messages0)
-                            .concat $ js-array
-                              js-object (:role |model)
-                                :parts $ js-array
-                                  js-object $ :functionCall fn-call
-                              js-object (:role |tool)
-                                :parts $ js-array
-                                  js-object $ :functionResponse
-                                    js-object (:name tool-name)
-                                      :response $ to-js-data tool-result
-                          followup-result $ js-await
-                            .!generateContentStream (.-models gen-ai)
-                              js-object (:model model) (:contents tool-contents)
-                                :config $ js/Object.assign
-                                  js-object
-                                    :thinkingConfig $ if think?
-                                      js-object
-                                        :thinkingBudget $ get-env "\"think-budget" (if pro? 3200 800)
-                                        :includeThoughts think?
-                                      js-object (:thinkingBudget 0) (:includeThoughts false)
-                                    :tools tools-array
-                                    :abortSignal $ let
-                                        abort $ new js/AbortController
-                                      reset! *abort-control abort
-                                      .-signal abort
-                                  if json?
-                                    js-object $ "\"responseMimeType" "\"application/json"
-                                    , js/undefined
-                        reset! *text "\""
-                        reset! *thinking-text "\""
-                        js-await $ js-for-await followup-result
-                          fn (? chunk)
-                            if (some? chunk)
-                              let
-                                  part js/chunk.candidates?.[0]?.content?.parts?.[0]
-                                  is-thinking? $ if (some? part) (.-thought part) false
-                                  t $ if (some? part) (.-text part) (.-text chunk)
-                                let
-                                    text $ or t (-> chunk .?-promptFeedback .?-blockReason) |__BLANK__
-                                  if is-thinking? (swap! *thinking-text str text) (swap! *text str text)
-                                  d! $ :: :states-merge cursor state
-                                    {} (:answer @*text) (:thinking @*thinking-text) (:loading? false) (:done? false)
-                                      :messages $ upsert-assistant-message messages1 @*text @*thinking-text
-                            d! $ :: :states-merge cursor state
-                              {} (:answer @*text) (:thinking @*thinking-text) (:loading? false) (:done? false)
-                                :messages $ upsert-assistant-message messages1 @*text @*thinking-text
-                  d! $ :: :states-merge cursor state
-                    {} (:answer @*text) (:thinking @*thinking-text) (:loading? false) (:done? true)
-                      :messages $ upsert-assistant-message messages1 @*text @*thinking-text
-          :examples $ []
         |call-genai-msg-v2! $ %{} :CodeEntry (:doc |)
           :code $ quote
             defn call-genai-msg-v2! (variant cursor chapters state prompt-text search? think? d! *text *thinking-text current-chapter-id) (hint-fn async) (println "|call v2")
@@ -352,13 +75,11 @@
                   abort $ deref *abort-control
                   do (js/console.warn "\"Aborting prev") (.!abort abort)
                 let
-                    selected $ if (.includes? prompt-text "\"{{selected}}")
-                      js-await $ get-selected
                     gen-ai @*gen-ai-new
                     model $ pick-model variant
-                    content $ .!replace prompt-text "\"{{selected}}" (or selected "\"<未找到选中内容>")
+                    content prompt-text
                     messages0 $ or (:messages state) ([])
-                    messages1 $ upsert-assistant-message messages0 "\"" nil
+                    messages1 $ upsert-assistant-message messages0 | nil
                     tools-list chapter-tools-declarations
                     prev-interaction-id $ :interaction-id state
                   js/setTimeout $ fn ()
@@ -670,10 +391,7 @@
                                           dec $ count messages
                                       div
                                         {} $ :class-name (str-spaced css/row-middle css/gap8 style-message-actions)
-                                        if chrome-extension?
-                                          comp-fill $ either content "\""
-                                          , nil
-                                        comp-copy $ either content "\""
+                                        , nil $ comp-copy (either content "\"")
                                       , nil
                         ; if
                           and
@@ -734,16 +452,6 @@
                   sessions-plugin.render
                   if dev? $ comp-reel (>> states :reel) reel ({})
                   if dev? $ comp-inspect "\"Store" store nil
-          :examples $ []
-        |comp-fill $ %{} :CodeEntry (:doc |)
-          :code $ quote
-            defcomp comp-fill (text)
-              div
-                {} (:class-name style-fill)
-                  :on-click $ fn (e d!)
-                    when chrome-extension? $ js/chrome.runtime.sendMessage
-                      js-object (:action |fill-text) (:text text)
-                comp-i :send 12 :currentColor
           :examples $ []
         |comp-message-box $ %{} :CodeEntry (:doc |)
           :code $ quote
@@ -1067,37 +775,6 @@
             defn json-pattern? (text)
               or (.!startsWith text "\"{") (.!startsWith text "\"[")
           :examples $ []
-        |messages->gemini $ %{} :CodeEntry (:doc |)
-          :code $ quote
-            defn messages->gemini (messages)
-              let
-                  messages0 $ if (some? messages) messages ([])
-                to-js-data $ map messages0
-                  fn (m)
-                    {}
-                      :role $ if
-                        = :assistant $ :role m
-                        , |model |user
-                      :parts $ []
-                        {} $ :text (:content m)
-          :examples $ []
-        |messages->interaction-history $ %{} :CodeEntry (:doc |)
-          :code $ quote
-              messages
-              let
-                  messages0 $ if (some? messages) messages ([])
-                to-js-data $ map messages0
-                  fn (m)
-                    {}
-                      :role $ if
-                        = :assistant $ :role m
-                        , |model |user
-                      :parts $ []
-                        if
-                          some? $ :thinking m
-                          {} $ :thought (:thinking m)
-                          {} $ :text (:content m)
-          :examples $ []
         |models-menu $ %{} :CodeEntry (:doc |)
           :code $ quote
             def models-menu $ [] (:: :item :gemini-flash "|Gemini Flash 3") (:: :item :gemini-pro "|Gemini Pro 3") (:: :item :gemini-flash-lite "|Gemini Flash Lite 2.5")
@@ -1122,73 +799,6 @@
           :code $ quote
             defn pick-model (variant)
               case-default variant "\"gemini-3-flash-preview" (:gemini-pro "\"gemini-3-pro-preview") (:gemini-flash-lite "\"gemini-2.5-flash-lite")
-          :examples $ []
-        |run-agent-loop-v2! $ %{} :CodeEntry (:doc |)
-          :code $ quote
-            defn run-agent-loop-v2! (gen-ai model interaction-id chapters d! cursor state messages1 *text *thinking-text max-rounds) (hint-fn async)
-              if (<= max-rounds 0)
-                do (js/console.warn "\"Max rounds reached, stopping agent loop")
-                  d! $ :: :states-merge cursor state
-                    {} (:answer @*text) (:thinking @*thinking-text) (:loading? false) (:done? true)
-                      :messages $ upsert-assistant-message messages1 @*text @*thinking-text
-                let
-                    prev-interaction-response $ js-await
-                      .!get (.-interactions gen-ai) interaction-id
-                    prev-interaction $ .-interaction prev-interaction-response
-                    outputs $ .-outputs prev-interaction
-                    function-calls $ -> outputs
-                      .!filter $ fn (o & args)
-                        = (.-type o) |function_call
-                  if
-                    = 0 $ .-length function-calls
-                    do (js/console.log "\"No more function calls, agent loop complete")
-                      d! $ :: :states-merge cursor state
-                        {} (:answer @*text) (:thinking @*thinking-text) (:loading? false) (:done? true)
-                          :messages $ upsert-assistant-message messages1 @*text @*thinking-text
-                    do
-                      js/console.log "\"Processing" (.-length function-calls) "\"function calls"
-                      let
-                          results-array $ -> function-calls
-                            .!map $ fn (fc & args)
-                              let
-                                  tool-name $ .-name fc
-                                  tool-args $ .-arguments fc
-                                  result $ handle-chapter-tool-call tool-name tool-args chapters d!
-                                js-object (:type |function_result) (:name tool-name)
-                                  :call_id $ .-id fc
-                                  :result $ to-js-data result
-                          stream $ js-await
-                            .!create (.-interactions gen-ai)
-                              js-object (:model model) (:previous_interaction_id interaction-id) (:input results-array) (:stream true)
-                        reset! *text "\""
-                        reset! *thinking-text "\""
-                        let
-                            *new-interaction-id $ atom nil
-                          js-await $ js-for-await stream
-                            fn (chunk)
-                              if
-                                = (.-event_type chunk) |content.delta
-                                let
-                                    delta $ .-delta chunk
-                                    delta-type $ .-type delta
-                                  if (= delta-type |text)
-                                    when (.-text delta)
-                                      swap! *text str $ .-text delta
-                                      d! $ :: :states-merge cursor state
-                                        {} (:answer @*text) (:loading? false) (:done? false)
-                                          :messages $ upsert-assistant-message messages1 @*text @*thinking-text
-                                    if (= delta-type |thought)
-                                      when (.-thought delta)
-                                        swap! *thinking-text str $ .-thought delta
-                                        d! $ :: :states-merge cursor state
-                                          {} (:thinking @*thinking-text) (:loading? false) (:done? false)
-                                            :messages $ upsert-assistant-message messages1 @*text @*thinking-text
-                                when
-                                  = (.-event_type chunk) |interaction.complete
-                                  let
-                                      interaction $ .-interaction chunk
-                                    reset! *new-interaction-id $ .-id interaction
-                          js-await $ run-agent-loop-v2! gen-ai model @*new-interaction-id chapters d! cursor state messages1 *text *thinking-text (dec max-rounds)
           :examples $ []
         |save-current-session $ %{} :CodeEntry (:doc |)
           :code $ quote
@@ -1627,10 +1237,9 @@
             respo.comp.space :refer $ =<
             respo.comp.inspect :refer $ comp-inspect
             reel.comp.reel :refer $ comp-reel
-            app.config :refer $ dev? chrome-extension?
+            app.config :refer $ dev?
             respo-md.comp.md :refer $ comp-md-block style-code-block
             respo-ui.comp :refer $ comp-copy comp-close
-            |../extension/get-selected :refer $ get-selected
             memof.once :refer $ memof1-call memof1-call-by
             |@google/genai :refer $ GoogleGenAI Modality
             feather.core :refer $ comp-i
@@ -1639,10 +1248,6 @@
         :examples $ []
     |app.config $ %{} :FileEntry
       :defs $ {}
-        |chrome-extension? $ %{} :CodeEntry (:doc |)
-          :code $ quote
-            def chrome-extension? $ and (some? js/window.chrome) (some? js/window.chrome.runtime) (some? js/window.chrome.runtime.id)
-          :examples $ []
         |dev? $ %{} :CodeEntry (:doc |)
           :code $ quote
             def dev? $ = "\"dev" (get-env "\"mode" "\"release")
@@ -1660,19 +1265,6 @@
           :code $ quote
             defatom *reel $ -> reel-schema/reel (assoc :base schema/store) (assoc :store schema/store)
           :examples $ []
-        |connect-to-worker! $ %{} :CodeEntry (:doc |)
-          :code $ quote
-            defn connect-to-worker! () $ if
-              and (some? js/window.chrome) (some? js/window.chrome.runtime) (some? js/window.chrome.runtime.connect)
-              do (println "|Connecting to worker...")
-                let
-                    port $ js/chrome.runtime.connect
-                      js-object $ :name |mySidepanel
-                  .!addListener (.-onDisconnect port)
-                    fn (event)
-                      do (println "|Worker disconnected, retrying in 500ms...") (js/setTimeout connect-to-worker! 500)
-              , nil
-          :examples $ []
         |dispatch! $ %{} :CodeEntry (:doc |)
           :code $ quote
             defn dispatch! (op)
@@ -1680,41 +1272,6 @@
                 and config/dev? $ not= op :states
                 js/console.log "\"Dispatch:" op
               reset! *reel $ reel-updater updater @*reel op
-          :examples $ []
-        |listen-extension! $ %{} :CodeEntry (:doc |)
-          :code $ quote
-            defn listen-extension! ()
-              js/chrome.runtime.onMessage.addListener $ fn (message sender respond!)
-                when
-                  = "\"menu-summary" $ .-action message
-                  let
-                      content $ str "\"你扮演一个专业的工程师, 对以下内容做一下讲解, 用中文, 注意要简略, 内容注意分块.\n\n" &newline &newline (.-content message)
-                      event-tuple $ :: :fill-text
-                        {} (:text content) (:submit? true)
-                    send-to-component! event-tuple
-                when
-                  = "\"fill-text" $ .-action message
-                  let
-                      content $ .-text message
-                      submit? $ either (.-submit? message) true
-                      event-tuple $ :: :fill-text
-                        {} (:text content) (:submit? submit?)
-                    send-to-component! event-tuple
-                when
-                  = "\"menu-translate" $ .-action message
-                  let
-                      content $ str "\"请将以下内容翻译成中文, 保持简洁分段:\n\n" &newline &newline (.-content message)
-                      event-tuple $ :: :fill-text
-                        {} (:text content) (:submit? true)
-                    send-to-component! event-tuple
-                when
-                  = "\"menu-custom" $ .-action message
-                  let
-                      content $ .-content message
-                      event-tuple $ :: :fill-text
-                        {} (:text content) (:submit? false)
-                    send-to-component! event-tuple
-              connect-to-worker!
           :examples $ []
         |main! $ %{} :CodeEntry (:doc |)
           :code $ quote
@@ -1737,7 +1294,6 @@
                   raw $ js/localStorage.getItem (:storage-key config/site)
                 when (some? raw)
                   dispatch! $ :: :hydrate-storage (parse-cirru-edn raw)
-              if config/chrome-extension? $ listen-extension!
               println "|App started."
           :examples $ []
         |mount-target $ %{} :CodeEntry (:doc |)
