@@ -1,0 +1,15 @@
+{
+  "short_name": "Msg Gemini",
+  "name": "Msg Gemini",
+  "icons": [
+    {
+      "src": "https://cdn.tiye.me/logo/gemini-icon.png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/Termina/msg-buffer/index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff"
+}
