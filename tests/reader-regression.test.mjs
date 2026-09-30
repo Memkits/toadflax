@@ -6,6 +6,7 @@ import { store } from "../js-out/app.schema.mjs";
 import { updater } from "../js-out/app.updater.mjs";
 import { new_reel } from "../js-out/reel.typed.mjs";
 import { make_string } from "../js-out/respo.render.html.mjs";
+import { comp_md_block } from "../js-out/respo-md.comp.md.mjs";
 const t = c.init_tags(["store", "router", "states", "chapters", "current-chapter-id", "title", "summary", "content", "id", "settings", "update-chapter", "delete-chapter", "data", "answer"]);
 const map = (...pairs) => c._$n__$M_(...pairs.flat());
 const read = (value, key) => c._$n_map_$o_get(value, t[key]);
@@ -29,6 +30,7 @@ test("selected chapter and real Markdown block output remain renderable", () => 
   assert.ok(html.includes("Body"));
   const messages = app.append_user_message(c._$L_(), "**Fixture** message");
   assert.equal(c._$n_list_$o_count(messages), 1);
+  assert.ok(make_string(comp_md_block("**Fixture** message", map())).includes("Fixture"));
 });
 test("chapter sorting unwraps pair Options and preserves lexical order", () => {
   const chapters = map("z", chapter("z"), "A", chapter("A"), "T", chapter("T"));
