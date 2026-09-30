@@ -920,7 +920,7 @@
             :features $ #{} :js-ffi
         'get-current-chapter $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn get-current-chapter (chapters chapter-key)
-            if (js-nullish? chapter-key) nil $ get chapters chapter-key
+            if (js-nullish? chapter-key) (Option :none) (get chapters chapter-key)
           :examples $ []
           :schema $ :: 'Fn $ {}
             :args $ [] (:: 'Map 'String 'Dynamic) (:: 'JsNullish 'String)

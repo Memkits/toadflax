@@ -1,4 +1,4 @@
-Developer runs `cr js` to watch build JavaScript, and `yarn vite` to start a local server. LLMs edits program by running `cr` commands, and then triggers re-compiling. 注意使用 cr 命令, 避免直接修改 `compact.cirru`.
+Use the project-pinned stable Calcit 0.27.0 CLI (`calcit`), and `yarn vite` to start a local server. Read `calcit docs agents --contract` and live command help before structured edits. Only `calcit.cirru` and `deps.cirru` are canonical; retired `compact.cirru` and `package.cirru` must not be recreated. Never text-edit the Snapshot. The `llms/` documents below preserve historical examples; their old `cr`, tuple/record, file and argument conventions do not override the current CLI or Option/Enum/Struct semantics.
 
 - [llms/Calcit.md](llms/Calcit.md) | Calcit 语言工具指令，包括 `cr` 命令等。
 - [llms/Respo.md](llms/Respo.md) | UI 库使用说明。

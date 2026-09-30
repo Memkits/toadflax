@@ -13,3 +13,6 @@ extension/dist
 .tmp/
 
 .yarn
+.calcit/
+compact.cirru
+package.cirru
