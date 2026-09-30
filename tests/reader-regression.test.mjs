@@ -22,6 +22,14 @@ test("actual initial container renders with a typed Reel and no chapter selected
   const root = new_reel(store);
   assert.ok(make_string(app.comp_container(root)).length > 100);
 });
+test("selected chapter and real Markdown block output remain renderable", () => {
+  const before = c.assoc(c.assoc(store, t.chapters, map("T", chapter("T"))), t["current-chapter-id"], "T");
+  const html = make_string(app.comp_container(new_reel(before)));
+  assert.ok(html.includes("Title T"));
+  assert.ok(html.includes("Body"));
+  const messages = app.append_user_message(c._$L_(), "**Fixture** message");
+  assert.equal(c._$n_list_$o_count(messages), 1);
+});
 test("chapter sorting unwraps pair Options and preserves lexical order", () => {
   const chapters = map("z", chapter("z"), "A", chapter("A"), "T", chapter("T"));
   const sorted = app.get_sorted_chapters(chapters);
