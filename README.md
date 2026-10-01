@@ -27,13 +27,17 @@ Only `calcit.cirru` and `deps.cirru` are canonical; CI rejects retired
 Calcit CLI, following `calcit docs agents --contract` and live command help.
 The older `llms/` guides retain historical examples, not current CLI signatures.
 
-Validate all public application namespaces and the full definition graph with
-`calcit calcit.cirru --check-only --keep-going --format json`, generate with
-`calcit calcit.cirru js`, then run `node --test tests/*.test.mjs`.
-Build using `VITE_BASE_URL=https://cos-sh.tiye.me/Memkits/toadflax/pr/2/ yarn vite build`
+Validate the entry with `calcit calcit.cirru --check-only`, and all five public
+application namespaces with `calcit calcit.cirru analyze check-public --ns app.comp.container --ns app.config --ns app.main --ns app.schema --ns app.updater --summary-only --format json`.
+Generate with `calcit calcit.cirru js`, then run `node --test tests/*.test.mjs`.
+Build using `VITE_BASE_URL=https://cos-sh.tiye.me/Memkits/toadflax/ yarn build`
 with public upload verification handled by the COS Action's built-in verify
 settings, without an extra CDN checker. Shared fonts, external icon and original server deployment paths are
 unchanged. Tests use fixtures only and do not call Gemini or consume API credits.
+
+PR 预览路径包含 PR 编号、运行编号和重试次数，避免覆盖其他运行的资源；生产路径保持不变。上传及公开访问校验仅使用 COS Action 内置 verify，不保留重复 CDN 校验测试。
+
+`yarn dev` 先编译一次再启动 Vite；实时修改 Calcit 时另开终端运行 `calcit calcit.cirru js -w`，无需增加 concurrently。
 
 ### License
 
