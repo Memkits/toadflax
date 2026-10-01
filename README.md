@@ -31,9 +31,8 @@ Validate all public application namespaces and the full definition graph with
 `calcit calcit.cirru --check-only --keep-going --format json`, generate with
 `calcit calcit.cirru js`, then run `node --test tests/*.test.mjs`.
 Build using `VITE_BASE_URL=https://cos-sh.tiye.me/Memkits/toadflax/pr/ yarn vite build`
-and run `node tests/check-cdn-path.mjs` with the same base. This checks local
-generated script/style/manifest URLs; remote verification is owned by the COS
-action. Shared fonts, external icon and original server deployment paths are
+with public upload verification handled by the COS Action's built-in verify
+settings, without an extra CDN checker. Shared fonts, external icon and original server deployment paths are
 unchanged. Tests use fixtures only and do not call Gemini or consume API credits.
 
 ### License
