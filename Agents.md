@@ -25,6 +25,6 @@ Use the project-pinned stable Calcit 0.27.0 CLI (`calcit`), and `yarn vite` to s
 - **pairs 列表转 map**：不要用 `.to-map` 处理 list，改用 `pairs-map`。
 - **函数调用与变量区分**：`week-start` 这类变量必须 is-leaf，避免成为单元素 list 导致被当做“函数调用”。
 - **数值与单位风险**：CSS 属性如 `flex`, `font-weight`, `line-height`, `z-index` 若使用单纯数字，Respo 会自动拼接 `px` 单位。必须改为字符串形式，例如 `:flex "\"1"` 或 `:font-weight "\"300"`。
-- **结构化编辑优先**：严禁直接编辑 `compact.cirru`，必须使用 `cr tree replace` 或 `cr edit def` 等命令。建议先通过 `cr query search 'keyword' -f 'ns/def'` 精确获得 node 路径。
+- **结构化编辑优先**：只编辑 canonical `calcit.cirru`，先用当前 `calcit` CLI 的 live help 确认命令，再定位定义并作局部结构化修改；不要恢复 `compact.cirru`。
 - **性能优化准则**：对于动态生成的列表（如任务项），应将静态样式从内联 `:style` 提取到 `defstyle` 中，通过 `:class-name` 引用以提升虚拟 DOM 性能。
 - **排序逻辑翻转**：翻转列表排序应直接修改 `sort` 函数所用比较器的返回分支（如将 `if ret 1 -1` 翻转为 `if ret -1 1`）。

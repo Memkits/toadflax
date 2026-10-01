@@ -30,7 +30,7 @@ The older `llms/` guides retain historical examples, not current CLI signatures.
 Validate all public application namespaces and the full definition graph with
 `calcit calcit.cirru --check-only --keep-going --format json`, generate with
 `calcit calcit.cirru js`, then run `node --test tests/*.test.mjs`.
-Build using `VITE_BASE_URL=https://cos-sh.tiye.me/Memkits/toadflax/pr/ yarn vite build`
+Build using `VITE_BASE_URL=https://cos-sh.tiye.me/Memkits/toadflax/pr/2/ yarn vite build`
 with public upload verification handled by the COS Action's built-in verify
 settings, without an extra CDN checker. Shared fonts, external icon and original server deployment paths are
 unchanged. Tests use fixtures only and do not call Gemini or consume API credits.
