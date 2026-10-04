@@ -35,7 +35,10 @@ with public upload verification handled by the COS Action's built-in verify
 settings, without an extra CDN checker. Shared fonts, external icon and original server deployment paths are
 unchanged. Tests use fixtures only and do not call Gemini or consume API credits.
 
-PR 预览路径包含 PR 编号、运行编号和重试次数，避免覆盖其他运行的资源；生产路径保持不变。上传及公开访问校验仅使用 COS Action 内置 verify，不保留重复 CDN 校验测试。
+PR 预览路径包含 PR 编号、运行编号和重试次数，避免覆盖其他运行的资源；生产路径保持不变。上传及公开访问校验仅使用正式 COS Action 1.2.0 内置 verify，不保留重复 CDN 校验测试；各 PR/生产队列保留待运行任务，不取消正在上传的任务。
+
+本次仅更新前端发布配置，Calcit/procs 仍为正式 0.27.0，不能据此认定
+正式 0.28 类型迁移已完成。原测试和模型/网络请求逻辑不变。
 
 `yarn dev` 先编译一次再启动 Vite；实时修改 Calcit 时另开终端运行 `calcit calcit.cirru js -w`，无需增加 concurrently。
 
