@@ -11,34 +11,51 @@ Docs https://ai.google.dev/gemini-api/docs/get-started/tutorial?lang=rest#text-a
 Configurations:
 
 - `gemini-key` in localStorage
-- `?model=YOUR_MODEL`, defaults to `gemini-1.5-flash`
+- 模型由界面选择，当前映射以 `app.comp.container/pick-model` 为准；本轮不更换模型或服务端接口。
+
+### 迁移候选状态
+
+本分支正在迁移到配对的 CLI/procs **0.30.1-alpha.5**，不是正式 0.30.1 发行版或
+已完成部署。旧存档会在读取时转换为真实 Struct/Option；保留缺省值和章节排序，
+不要求删除 localStorage。发送入口已修正配置/会话及 dispatch/配置的参数顺序。
+请求前同步设置加载状态，Agent 工具结束时保留最终回答，不再被旧会话状态覆盖。
+
+当前完整 strict workflow、存档原生回归和现有入口的 11 项 JS 测试通过，
+显式 unsafe 已清零。JS 测试保留原 6 项场景，新增合成输入检查、实际异步 SDK 入口及单轮
+章节工具链路。浏览器已用合成数据验证创建/切换章节、配置保存、模型菜单、历史选择和正常入口
+刷新恢复；空闲时不会再显示 Loading。它们不等于真实服务验收，多工具/多轮和取消仍需审阅。
+不使用真实 API key 或调用付费模型，不合并或部署生产。
+
+声明依赖采用已发布正式 tag，不使用 main/hash；移除没有应用导入/调用的 Lilac，
+仍保留实际使用的 Markdown、Memof、Alerts 和 Bisection Key。历史说明和模型信息以实际代码为准，
+后续会随完整验收更新；不要把下文旧 0.27 安装说明当当前候选的命令合同。
 
 ### Workflow
 
 https://github.com/calcit-lang/respo-calcit-workflow
 
-Use stable Calcit/procs 0.27.0 with `caps --ci`, `yarn install --immutable`,
-and `caps verify --toolchain`. Alerts/Feather use their updated compatible
-releases; actually used Markdown/Memof and chapter ordering remain intact.
-Strict Caps resolution still awaits Markdown's compatible UI/js-ffi release.
+使用配对的 Calcit/procs `0.30.1-alpha.5`，不要混用全局旧 CLI。安装 JS 依赖执行
+`yarn install --immutable`。Calcit 模块的正式 tag 已声明在 `deps.cirru`；严格 Caps 安装及
+工具链检查由独立 CI 验收，本候选尚未完成该项，不把本地复用模块当作全新安装的证据。
+本地不执行 Caps（包括只读命令）。
 
 Only `calcit.cirru` and `deps.cirru` are canonical; CI rejects retired
 `compact.cirru` and `package.cirru`. Edit the Snapshot through the installed
 Calcit CLI, following `calcit docs agents --contract` and live command help.
 The older `llms/` guides retain historical examples, not current CLI signatures.
 
-Validate the entry with `calcit calcit.cirru --check-only`, and all five public
-application namespaces with `calcit calcit.cirru analyze check-public --ns app.comp.container --ns app.config --ns app.main --ns app.schema --ns app.updater --summary-only --format json`.
-Generate with `calcit calcit.cirru js`, then run `node --test tests/*.test.mjs`.
-Build using `VITE_BASE_URL=https://cos-sh.tiye.me/Memkits/toadflax/ yarn build`
-with public upload verification handled by the COS Action's built-in verify
-settings, without an extra CDN checker. Shared fonts, external icon and original server deployment paths are
-unchanged. Tests use fixtures only and do not call Gemini or consume API credits.
+依次运行 `calcit --check-only --all-defs`、`calcit fix --workflow strict --verify`、
+`calcit test app.schema/normalize-store --require-match`、`calcit js`，再执行
+`node --test tests/reader-regression.test.mjs`。测试必须使用刚生成的 JS，不能复用旧版本输出。
+构建执行 `VITE_BASE_URL=https://cos-sh.tiye.me/Memkits/toadflax/ yarn build`。
+现有工作流已替换旧 check-public，加入冷启动命名空间检查、完整 strict 和存档回归；
+本地通过不等于独立 CI 的依赖解析、构建和上传已通过。
+共享字体、外部图标和原服务器部署路径未改。离线测试不调用 Gemini 或消耗 API 额度。
 
 PR 预览路径包含 PR 编号、运行编号和重试次数，避免覆盖其他运行的资源；生产路径保持不变。上传及公开访问校验仅使用正式 COS Action 1.2.0 内置 verify，不保留重复 CDN 校验测试；各 PR/生产队列保留待运行任务，不取消正在上传的任务。
 
-本次仅更新前端发布配置，Calcit/procs 仍为正式 0.27.0，不能据此认定
-正式 0.28 类型迁移已完成。原测试和模型/网络请求逻辑不变。
+本轮包括源码和类型迁移，不只是前端发布配置。模型名称、代理服务 base URL 和原请求协议
+保留；真实服务、取消和多工具链路尚未验收，不应仅凭本地测试触发生产部署。
 
 `yarn dev` 先编译一次再启动 Vite；实时修改 Calcit 时另开终端运行 `calcit calcit.cirru js -w`，无需增加 concurrently。
 
