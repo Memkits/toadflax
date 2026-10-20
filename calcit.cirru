@@ -506,10 +506,10 @@
                                       str |[previous-chapter-summary]
                                         assert-type (read-field chapter :summary) 'String
                                         , &newline text
-                                submit-message! cursor chapters state novel-config prompt-with-context false false model d! current-chapter-id nil
+                                submit-message! cursor chapters novel-config state prompt-with-context false false model d! current-chapter-id nil
                       comp-chapter-preview current-chapter $ fn (d!)
                         .show generate-content-plugin d! $ fn (text)
-                          submit-message! cursor chapters state novel-config text false false model d! current-chapter-id nil
+                          submit-message! cursor chapters novel-config state text false false model d! current-chapter-id nil
                       div
                         {} $ :class-name $ str-spaced css/column style-chat-panel
                         div
@@ -585,7 +585,7 @@
                                     :class-name $ str-spaced css/button style-reply-button
                                     :on-click $ fn (e d!)
                                       .show reply-plugin d! $ fn (text)
-                                        submit-message! cursor chapters state novel-config text (:search? message-box-state) (:think? message-box-state) model d! current-chapter-id nil
+                                        submit-message! cursor chapters novel-config state text (:search? message-box-state) (:think? message-box-state) model d! current-chapter-id nil
                                   <> |Reply
                               , nil
                             div
@@ -622,9 +622,9 @@
                               ; d! $ :: :change-model
                               .show model-plugin d!
                           fn (text search? think? d!)
-                            submit-message! cursor chapters
+                            submit-message! cursor chapters novel-config
                               -> state (assoc :answer nil) (assoc :thinking nil) (assoc :done? false)
-                              , novel-config text search? think? model d! current-chapter-id nil
+                              , text search? think? model d! current-chapter-id nil
                     div ({})
                       <> $ str "|Unknown router: " router
                 .render model-plugin
