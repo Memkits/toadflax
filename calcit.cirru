@@ -1171,7 +1171,7 @@
                       tool-name $ unsafe-coerce (read-field first-call :name) 'String
                       tool-args $ read-field first-call :arguments
                       call-id $ unsafe-coerce (read-field first-call :id) 'String
-                      tool-result $ handle-chapter-tool-call tool-name tool-args chapters novel-config d!
+                      tool-result $ handle-chapter-tool-call tool-name tool-args chapters d! novel-config
                     if (= tool-name |pause)
                       d! $ :: :states-merge cursor state $ {} (:loading? false) (:done? true)
                       let
