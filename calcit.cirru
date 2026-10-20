@@ -18,15 +18,6 @@
           :code $ quote $ defref *gen-ai-new nil
           :examples $ []
           :schema $ :: 'Ref $ :: 'JsNullish 'JsObject
-        'AbortControl $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ deftrait AbortControl
-            .abort $ :: 'Fn $ {}
-              :generics $ [] 'T
-              :args $ [] 'T
-              :return 'Unit
-          :examples $ []
-          :ffi $ {} (:backend :js) (:kind :external-object)
-          :schema $ :: 'Trait
         'GenAiClient $ %{} 'CodeEntry (:doc |)
           :code $ quote $ deftrait GenAiClient (:interactions 'GenAiInteractions)
           :examples $ []
@@ -40,32 +31,6 @@
             .get $ :: 'Fn $ {}
               :args $ [] 'app.comp.container/GenAiInteractions 'String
               :return 'js-ffi.shared/PromiseHost
-          :examples $ []
-          :ffi $ {} (:backend :js) (:kind :external-object)
-          :schema $ :: 'Trait
-        'GenAiOutput $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ deftrait GenAiOutput (:type 'String)
-            :text $ :: 'JsNullish 'String
-            :name $ :: 'JsNullish 'String
-            :arguments 'Dynamic
-            :id $ :: 'JsNullish 'String
-          :examples $ []
-          :ffi $ {} (:backend :js) (:kind :external-object)
-          :schema $ :: 'Trait
-        'GenAiOutputArray $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ deftrait GenAiOutputArray (:length 'Number)
-            .find $ :: 'Fn $ {}
-              :generics $ [] 'T
-              :args $ [] 'T 'Dynamic
-              :return $ :: 'JsNullish 'GenAiOutput
-            .filter $ :: 'Fn $ {}
-              :generics $ [] 'T
-              :args $ [] 'T 'Dynamic
-              :return 'GenAiOutputArray
-            .map $ :: 'Fn $ {}
-              :generics $ [] 'T
-              :args $ [] 'T 'Dynamic
-              :return 'GenAiOutputArray
           :examples $ []
           :ffi $ {} (:backend :js) (:kind :external-object)
           :schema $ :: 'Trait
@@ -629,9 +594,11 @@
                               {} $ :class-name css/row-parted
                               div
                                 {} $ :class-name $ str-spaced css/row-middle css/gap8
-                                if done? nil $ div
-                                  {} $ :style $ {} (:display :flex) (:justify-content :center) (:align-items :center) (:margin |8px)
-                                  memof1-call-by :abort-streaming comp-abort |Loading...
+                                if (:loading? state)
+                                  div
+                                    {} $ :style $ {} (:display :flex) (:justify-content :center) (:align-items :center) (:margin |8px)
+                                    memof1-call-by :abort-streaming comp-abort |Loading...
+                                  , nil
                               if done? $ div $ {}
                                 :class-name $ str-spaced css/row-middle css/gap8
                             if

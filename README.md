@@ -20,9 +20,10 @@ Configurations:
 不要求删除 localStorage。发送入口已修正配置/会话及 dispatch/配置的参数顺序。
 请求前同步设置加载状态，Agent 工具结束时保留最终回答，不再被旧会话状态覆盖。
 
-当前完整 strict workflow、499 个定义检查、存档原生回归和现有入口的 11 项 JS 测试通过，
+当前完整 strict workflow、存档原生回归和现有入口的 11 项 JS 测试通过，
 显式 unsafe 已清零。JS 测试保留原 6 项场景，新增合成输入检查、实际异步 SDK 入口及单轮
-章节工具链路。它们不等于真实服务或全部 UI 验收：浏览器恢复、多工具/多轮和取消仍需审阅。
+章节工具链路。浏览器已用合成数据验证创建/切换章节、配置保存、模型菜单、历史选择和正常入口
+刷新恢复；空闲时不会再显示 Loading。它们不等于真实服务验收，多工具/多轮和取消仍需审阅。
 不使用真实 API key 或调用付费模型，不合并或部署生产。
 
 声明依赖采用已发布正式 tag，不使用 main/hash；移除没有应用导入/调用的 Lilac，
@@ -47,7 +48,8 @@ The older `llms/` guides retain historical examples, not current CLI signatures.
 `calcit test app.schema/normalize-store --require-match`、`calcit js`，再执行
 `node --test tests/reader-regression.test.mjs`。测试必须使用刚生成的 JS，不能复用旧版本输出。
 构建执行 `VITE_BASE_URL=https://cos-sh.tiye.me/Memkits/toadflax/ yarn build`。
-工作流仍需在源码及 UI 验收完成后更新至上述门禁；本地通过不等于 CI 已通过。
+现有工作流已替换旧 check-public，加入冷启动命名空间检查、完整 strict 和存档回归；
+本地通过不等于独立 CI 的依赖解析、构建和上传已通过。
 共享字体、外部图标和原服务器部署路径未改。离线测试不调用 Gemini 或消耗 API 额度。
 
 PR 预览路径包含 PR 编号、运行编号和重试次数，避免覆盖其他运行的资源；生产路径保持不变。上传及公开访问校验仅使用正式 COS Action 1.2.0 内置 verify，不保留重复 CDN 校验测试；各 PR/生产队列保留待运行任务，不取消正在上传的任务。

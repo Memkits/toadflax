@@ -22,7 +22,9 @@ test("missing and null chapter selection returns none rather than raw nil", () =
 });
 test("actual initial container renders with a typed Reel and no chapter selected", () => {
   const root = new_reel(store);
-  assert.ok(make_string(app.comp_container(root)).length > 100);
+  const html = make_string(app.comp_container(root));
+  assert.ok(html.length > 100);
+  assert.ok(!html.includes("Loading..."));
 });
 test("selected chapter and real Markdown block output remain renderable", () => {
   const before = c.assoc(c.assoc(store, t.chapters, map("T", chapter("T"))), t["current-chapter-id"], c._PCT_some("T"));
