@@ -13,7 +13,7 @@
         '*abort-control $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defref *abort-control nil
           :examples $ []
-          :schema $ :: 'Ref $ :: 'JsNullish 'AbortControl
+          :schema $ :: 'Ref $ :: 'JsNullish 'js-ffi.shared/AbortControllerHost
         '*gen-ai-new $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defref *gen-ai-new nil
           :examples $ []
@@ -35,13 +35,11 @@
         'GenAiInteractions $ %{} 'CodeEntry (:doc |)
           :code $ quote $ deftrait GenAiInteractions
             .create $ :: 'Fn $ {}
-              :generics $ [] 'T
-              :args $ [] 'T 'Dynamic
-              :return 'Dynamic
+              :args $ [] 'app.comp.container/GenAiInteractions 'JsObject
+              :return 'js-ffi.shared/PromiseHost
             .get $ :: 'Fn $ {}
-              :generics $ [] 'T
-              :args $ [] 'T 'Dynamic
-              :return 'Dynamic
+              :args $ [] 'app.comp.container/GenAiInteractions 'String
+              :return 'js-ffi.shared/PromiseHost
           :examples $ []
           :ffi $ {} (:backend :js) (:kind :external-object)
           :schema $ :: 'Trait
@@ -125,12 +123,12 @@
                 :apiKey $ get-gemini-key!
                 :httpOptions $ js-object $ :baseUrl |https://ja3.chenyong.life
             let
-                abort $ unsafe-coerce (deref *abort-control) (:: 'JsNullish 'AbortControl)
+                abort $ deref *abort-control
               if (js-present? abort)
                 do (js/console.warn |Aborting-prev)
-                  .!abort $ unsafe-coerce abort 'AbortControl
+                  shared/abort! $ js-cast abort 'js-ffi.shared/AbortControllerHost
             let
-                gen-ai $ unsafe-coerce (deref *gen-ai-new) 'GenAiClient
+                gen-ai $ js-cast (deref *gen-ai-new) 'app.comp.container/GenAiClient
                 model $ pick-model variant
                 content prompt-text
                 messages0 $ :messages state
@@ -138,20 +136,17 @@
                 _ $ println "|[→ LLM] Sending" (count messages1) |messages
                 tools-list tools
                 prev-interaction-id $ :interaction-id state
-              js/setTimeout $ fn () $ d!
-                :: :states-merge cursor state $ {} (:answer nil) (:thinking nil) (:loading? true) (:done? false) (:messages messages1)
+              d! $ :: :states-merge cursor state $ {} (:answer nil) (:thinking nil) (:loading? true) (:done? false) (:messages messages1)
               let
                   request-obj $ build-v2-request model content messages0 prev-interaction-id tools-list chapters current-chapter-id
-                  interaction $ js-await $ .!create
-                    unsafe-coerce (.-interactions gen-ai) 'GenAiInteractions
-                    , request-obj
+                  interaction $ js-await $
+                    js-cast (.-interactions gen-ai) 'app.comp.container/GenAiInteractions
+                    , .create request-obj
                   result $ extract-interaction-outputs interaction
-                  answer-text $ unsafe-coerce (read-field result :text) 'String
-                  function-calls $ assert-type
-                    to-calcit-data $ read-field result :function-calls
-                    :: 'List $ :: 'Map 'Tag 'Dynamic
+                  answer-text $ :text result
+                  function-calls $ :function-calls result
                   _ $ println "|[← LLM] Response - text:" (js-present? answer-text) |function-calls: $ count function-calls
-                  new-interaction-id $ unsafe-coerce (read-field result :interaction-id) 'String
+                  new-interaction-id $ :interaction-id result
                 js/console.log "|interaction result:" result
                 println "|interaction result:" new-interaction-id |calls: $ count function-calls
                 if
@@ -249,10 +244,10 @@
                 :style $ {} $ :cursor :pointer
                 :on-click $ fn (e d!)
                   let
-                      abort $ unsafe-coerce (deref *abort-control) (:: 'JsNullish 'AbortControl)
+                      abort $ deref *abort-control
                     if (js-present? abort)
                       do (js/console.warn |Aborting-prev)
-                        .!abort $ unsafe-coerce abort 'AbortControl
+                        shared/abort! $ js-cast abort 'js-ffi.shared/AbortControllerHost
               <> t
               =< 8 nil
               <> "|✕" style-abort-close
@@ -482,6 +477,15 @@
                   {} (:title "|History Sessions")
                     :style $ {} (:min-width "||max(320px,30vw)\"") (:max-width |80vw)
                     :render $ fn (on-close)
+                      hint-fn $ {}
+                        :args $ [] $ :: 'Fn
+                          {}
+                            :args $ [] $ :: 'Fn
+                              {}
+                                :args $ [] 'Dynamic
+                                :return 'Unit
+                            :return 'Unit
+                        :return 'respo.schema/Component
                       comp-sessions-modal sessions
                         fn (session-id d!)
                           d! $ :: :states cursor $ -> state
@@ -492,7 +496,6 @@
                               fn (session) (:messages session)
                             assoc :done? true
                           d! $ :: :session :session-id session-id
-                          on-close d!
                         , on-close
                 create-next-chapter-plugin $ use-prompt (>> states :create-next-chapter)
                   {} (:title "|Plan Next Chapter") (:placeholder "|Describe what you want for the next chapter") (:multiline? true) (:button-text |Plan)
@@ -521,6 +524,9 @@
                               sorted $ get-sorted-chapters chapters
                               last-ch $ last sorted
                             .show create-next-chapter-plugin d! $ fn (text)
+                              hint-fn $ {}
+                                :args $ [] 'String
+                                :return 'Unit
                               let
                                   prompt-with-context $ option:fold last-ch
                                     fn () $ str &newline &newline text
@@ -528,12 +534,17 @@
                                       str |[previous-chapter-summary] (:summary chapter) &newline text
                                 submit-message! cursor chapters novel-config state prompt-with-context false false model d! current-chapter-id nil
                               , &unit
+                          , &unit
                       if (.some? current-chapter)
                         comp-chapter-preview (option:unwrap current-chapter)
                           fn (d!)
                             .show generate-content-plugin d! $ fn (text)
+                              hint-fn $ {}
+                                :args $ [] 'String
+                                :return 'Unit
                               submit-message! cursor chapters novel-config state text false false model d! current-chapter-id nil
                               , &unit
+                            , &unit
                         div
                           {} $ :class-name style-empty-state
                           <> "|Select a chapter to preview"
@@ -549,7 +560,7 @@
                             div
                               {} (:class-name css/row-middle) (:title |History)
                                 :style $ {} $ :cursor :pointer
-                                :on-click $ fn (e d!) (.show sessions-plugin d!)
+                                :on-click $ fn (e d!) (.show sessions-plugin d!) &unit
                               div
                                 {} $ :class-name style-history-button
                                 comp-i |clock 16 |currentColor
@@ -606,8 +617,12 @@
                                     :class-name $ str-spaced css/button style-reply-button
                                     :on-click $ fn (e d!)
                                       .show reply-plugin d! $ fn (text)
+                                        hint-fn $ {}
+                                          :args $ [] 'String
+                                          :return 'Unit
                                         submit-message! cursor chapters novel-config state text (:search? message-box-state) (:think? message-box-state) model d! current-chapter-id nil
                                         , &unit
+                                      , &unit
                                   <> |Reply
                               , nil
                             div
@@ -643,6 +658,7 @@
                             :on-click $ fn (e d!)
                               ; d! $ :: :change-model
                               .show model-plugin d!
+                              , &unit
                           fn (text search? think? d!)
                             submit-message! cursor chapters novel-config
                               -> state
@@ -997,44 +1013,49 @@
         'extract-interaction-outputs $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn extract-interaction-outputs (interaction)
             let
-                outputs $ if
-                  js-present? $ .-outputs interaction
-                  unsafe-coerce (.-outputs interaction) 'GenAiOutputArray
-                  unsafe-coerce (js-array) 'GenAiOutputArray
-                text-output $ -> outputs $ .!find
-                  fn (o & args)
+                data $ sdk-object-data interaction
+                outputs $ decode-map-as
+                  option:unwrap-or (get data :outputs) ([])
+                  :: 'List $ :: 'Map 'Tag 'Dynamic
+                text-output $ find outputs $ fn (output)
+                  =
+                    decode-map-as
+                      option:unwrap $ get output :type
+                      , 'String
+                    , |text
+                function-calls $ map
+                  filter outputs $ fn (output)
                     =
-                      unsafe-coerce
-                        .-type $ unsafe-coerce o 'GenAiOutput
+                      decode-map-as
+                        option:unwrap $ get output :type
                         , 'String
-                      , |text
-                function-calls $ to-js-data $ .!map
-                  unsafe-coerce
-                    .!filter outputs $ fn (o & args)
-                      =
-                        unsafe-coerce
-                          .-type $ unsafe-coerce o 'GenAiOutput
+                      , |function_call
+                  fn (output)
+                    schema/ToolCall :name
+                      decode-map-as
+                        option:unwrap $ get output :name
+                        , 'String
+                      , :arguments
+                        decode-map-as
+                          option:unwrap $ get output :arguments
+                          :: 'Map 'Tag 'Dynamic
+                        , :id $ decode-map-as
+                          option:unwrap $ get output :id
                           , 'String
-                        , |function_call
-                    , 'GenAiOutputArray
-                  fn (o & args)
-                    let
-                        output $ unsafe-coerce o 'GenAiOutput
-                      {}
-                        :name $ .-name output
-                        :arguments $ .-arguments output
-                        :id $ .-id output
-              {}
-                :text $ if (js-present? text-output)
-                  .-text $ unsafe-coerce text-output 'GenAiOutput
-                  , |
-                :function-calls function-calls
-                :interaction-id $ .-id interaction
+              schema/InteractionResult :text
+                option:fold text-output
+                  fn () |
+                  fn (output)
+                    decode-map-as
+                      option:unwrap-or (get output :text) |
+                      , 'String
+                , :function-calls function-calls :interaction-id $ decode-map-as
+                  option:unwrap $ get data :id
+                  , 'String
           :examples $ []
-          :schema $ :: 'Fn $ {}
+          :schema $ :: 'Fn $ {} (:return 'app.schema/InteractionResult)
             :args $ [] 'Dynamic
             :features $ #{} :js-ffi
-            :return $ :: 'Map 'Tag 'Dynamic
         'generate-session-id $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn generate-session-id ()
             str $ :timestamp $ shared/date-now-snapshot
@@ -1079,12 +1100,15 @@
         'handle-chapter-tool-call $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn handle-chapter-tool-call (tool-name raw-args chapters d! novel-config) (println "|Tool call:" tool-name)
             let
-                args0 $ if (string? raw-args) (js/JSON.parse raw-args) raw-args
+                args0 $ sdk-object-data raw-args
                 chapters0 chapters
                 sorted-keys $ sort
-                  &set:to-list $ keys $ assert-type chapters0 (:: 'Map 'String 'Dynamic)
+                  &set:to-list $ keys chapters0
                   , &compare
                 neighbor-summaries $ fn (chapter-key)
+                  hint-fn $ {}
+                    :args $ [] 'String
+                    :return $ :: 'Map 'Tag 'Dynamic
                   let
                       idx $ option:unwrap-or
                         index-of sorted-keys $ decode-map-as chapter-key 'String
@@ -1118,41 +1142,38 @@
                             :id $ :order-key chapter
                             :title $ :title chapter
                             :summary $ :summary chapter
-                title $ unsafe-coerce
-                  or (.-title args0) |Untitled
+                title $ decode-map-as
+                  either (read-field args0 :title) |Untitled
                   , 'String
-                summary $ unsafe-coerce
-                  or (.-summary args0) |
+                summary $ decode-map-as
+                  either (read-field args0 :summary) |
                   , 'String
-                content0 $ unsafe-coerce
-                  or (.-content args0) |
+                content0 $ decode-map-as
+                  either (read-field args0 :content) |
                   , 'String
-                chapter-id $ unsafe-coerce
-                  or (.-chapterId args0) (.-chapter_id args0)
+                chapter-id $ decode-map-as
+                  either (read-field args0 :chapterId) (read-field args0 :chapter_id) |
                   , 'String
-                after-id $ unsafe-coerce
-                  or (.-afterChapterId args0) (.-after_chapter_id args0)
+                after-id $ decode-map-as
+                  either (read-field args0 :afterChapterId) (read-field args0 :after_chapter_id) |
                   , 'String
               println "|[Tool Args] novel-config:" novel-config
               cond
                   = tool-name |pause
                   {} (:ok? true)
-                    :message $ or (.-message args0) "|Pause requested"
+                    :message $ decode-map-as
+                      either (read-field args0 :message) "|Pause requested"
+                      , 'String
                 (= tool-name |list-chapters)
                   {} (:ok? true)
                     :chapters $ map sorted-keys $ fn (k)
                       let
-                          ch $ option:unwrap $ get
-                            assert-type chapters0 $ :: 'Map 'String 'Dynamic
-                            , k
+                          ch $ option:unwrap $ get chapters0 k
                         {} (:id k) (:order-key k)
                           :title $ :title ch
                           :summary $ :summary ch
                 (= tool-name |get-chapter)
-                  option:fold
-                    get
-                      assert-type chapters0 $ :: 'Map 'String 'Dynamic
-                      , chapter-id
+                  option:fold (get chapters0 chapter-id)
                     fn () $ {} (:ok? false) (:error |Chapter-not-found)
                     fn (ch)
                       {} (:ok? true) (:chapter ch)
@@ -1187,27 +1208,26 @@
                     {} $ :ok? true
                 (= tool-name |update-chapter-meta)
                   let
-                      title1 $ .-title args0
-                      summary1 $ .-summary args0
+                      title1 $ read-field args0 :title
+                      summary1 $ read-field args0 :summary
                       updates $ merge
-                        if (js-present? title1)
-                          {} $ :title $ unsafe-coerce title1 'String
+                        if
+                          not $ nil? title1
+                          {} $ :title $ decode-map-as title1 'String
                           {}
-                        if (js-present? summary1)
-                          {} $ :summary $ unsafe-coerce summary1 'String
+                        if
+                          not $ nil? summary1
+                          {} $ :summary $ decode-map-as summary1 'String
                           {}
                     d! $ :: :update-chapter chapter-id updates
                     {} $ :ok? true
                 (= tool-name |get-chapter-with-neighbors)
-                  option:fold
-                    get
-                      assert-type chapters0 $ :: 'Map 'String 'Dynamic
-                      , chapter-id
+                  option:fold (get chapters0 chapter-id)
                     fn () $ {} (:ok? false) (:error |Chapter-not-found)
                     fn (ch)
                       merge
                         {} (:ok? true) (:chapter ch)
-                        assert-type (neighbor-summaries chapter-id) (:: 'Map 'Tag 'Dynamic)
+                        neighbor-summaries chapter-id
                 (= tool-name |get-novel-config)
                   {} (:ok? true) (:config novel-config)
                 true $ {} (:ok? false) (:error "|Unknown tool")
@@ -1273,48 +1293,43 @@
               do (js/console.warn "|Max rounds reached")
                 d! $ :: :states-merge cursor state $ {} (:loading? false) (:done? true)
               let
-                  prev-interaction-response $ js-await $ .!get
-                    unsafe-coerce (.-interactions gen-ai) 'GenAiInteractions
-                    , interaction-id
+                  prev-interaction-response $ js-await $
+                    js-cast (.-interactions gen-ai) 'app.comp.container/GenAiInteractions
+                    , .get interaction-id
                   prev-interaction $ if
                     js-present? $ .-interaction prev-interaction-response
                     .-interaction prev-interaction-response
                     , prev-interaction-response
                   result $ extract-interaction-outputs prev-interaction
-                  function-calls $ assert-type
-                    to-calcit-data $ read-field result :function-calls
-                    :: 'List $ :: 'Map 'Tag 'Dynamic
-                  new-interaction-id $ unsafe-coerce (read-field result :interaction-id) 'String
+                  function-calls $ :function-calls result
+                  new-interaction-id $ :interaction-id result
                 if (empty? function-calls)
                   do (println "|No more calls, stopping loop.")
                     d! $ :: :states-merge cursor state $ {} (:loading? false) (:done? true)
+                      :answer $ :text result
+                      :messages $ upsert-assistant-message messages1 (:text result) (Option :none)
+                      :interaction-id new-interaction-id
                   let
                       first-call $ option:unwrap $ first function-calls
-                      tool-name $ unsafe-coerce (read-field first-call :name) 'String
-                      tool-args $ read-field first-call :arguments
-                      call-id $ unsafe-coerce (read-field first-call :id) 'String
+                      tool-name $ :name first-call
+                      tool-args $ :arguments first-call
+                      call-id $ :id first-call
                       tool-result $ handle-chapter-tool-call tool-name tool-args chapters d! novel-config
                     if (= tool-name |pause)
                       d! $ :: :states-merge cursor state $ {} (:loading? false) (:done? true)
                       let
-                          result-text $ unsafe-coerce
+                          result-text $ decode-map-as
                             js/JSON.stringify $ to-js-data tool-result
                             , 'String
                           followup-input $ build-function-result-input tool-name call-id result-text
                           followup-req $ js-object (:model model) (:previous_interaction_id new-interaction-id) (:input followup-input)
-                            :tools $ if
-                              >
-                                unsafe-coerce
-                                  .-length $ unsafe-coerce tools 'GenAiOutputArray
-                                  , 'Number
-                                , 0
-                              , tools js/undefined
-                          followup-interaction $ js-await $ .!create
-                            unsafe-coerce (.-interactions gen-ai) 'GenAiInteractions
-                            , followup-req
+                            :tools $ if (js-nullish? tools) js/undefined tools
+                          followup-interaction $ js-await $
+                            js-cast (.-interactions gen-ai) 'app.comp.container/GenAiInteractions
+                            , .create followup-req
                           followup-result $ extract-interaction-outputs followup-interaction
-                          final-text $ unsafe-coerce (read-field followup-result :text) 'String
-                          final-interaction-id $ unsafe-coerce (read-field followup-result :interaction-id) 'String
+                          final-text $ :text followup-result
+                          final-interaction-id $ :interaction-id followup-result
                         d! $ :: :states-merge cursor state $ {} (:answer final-text)
                           :messages $ upsert-assistant-message messages1 final-text $ Option :none
                           :interaction-id final-interaction-id
@@ -1339,6 +1354,18 @@
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'app.schema/Store)
             :args $ [] 'app.schema/Store 'app.schema/ChatState
+        'sdk-object-data $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defn sdk-object-data (raw)
+            if (map? raw)
+              decode-map-as raw $ :: 'Map 'Tag 'Dynamic
+              decode-map-as
+                json-parse $ if (string? raw) raw $ decode-map-as (js/JSON.stringify raw) 'String
+                :: 'Map 'Tag 'Dynamic
+          :examples $ []
+          :schema $ :: 'Fn $ {}
+            :args $ [] 'Dynamic
+            :features $ #{} :js-ffi
+            :return $ :: 'Map 'Tag 'Dynamic
         'style-a-toggler $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-a-toggler
             {}
@@ -2023,6 +2050,12 @@
             :model 'Tag
           :examples $ []
           :schema $ :: 'StructDef
+        'InteractionResult $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defstruct InteractionResult (:text 'String)
+            :function-calls $ :: 'List 'app.schema/ToolCall
+            :interaction-id 'String
+          :examples $ []
+          :schema $ :: 'StructDef
         'MessageBoxState $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstruct MessageBoxState (:content 'String) (:search? 'Bool) (:think? 'Bool)
           :examples $ []
@@ -2059,6 +2092,12 @@
             :current-chapter-id $ :: 'Option 'String
             :router 'Tag
             :novel-config 'app.schema/NovelConfig
+          :examples $ []
+          :schema $ :: 'StructDef
+        'ToolCall $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defstruct ToolCall (:name 'String)
+            :arguments $ :: 'Map 'Tag 'Dynamic
+            :id 'String
           :examples $ []
           :schema $ :: 'StructDef
         'chat-state $ %{} 'CodeEntry (:doc |)

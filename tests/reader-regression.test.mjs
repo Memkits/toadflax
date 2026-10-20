@@ -2,14 +2,14 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import * as c from "../js-out/calcit.core.mjs";
 import * as app from "../js-out/app.comp.container.mjs";
-import { store, normalize_chapter, normalize_store, normalize_message_box_state, decode_op } from "../js-out/app.schema.mjs";
+import { store, normalize_chapter, normalize_store, normalize_message_box_state, normalize_chat_state, decode_op } from "../js-out/app.schema.mjs";
 import { updater } from "../js-out/app.updater.mjs";
 import { new_reel } from "../js-out/reel.typed.mjs";
 import { make_string } from "../js-out/respo.render.html.mjs";
 import { comp_md_block } from "../js-out/respo-md.comp.md.mjs";
 const t = c.init_tags(["store", "router", "states", "chapters", "current-chapter-id", "title", "summary", "content", "id", "settings", "update-chapter", "delete-chapter", "data", "answer"]);
 const map = (...pairs) => c._$n__$M_(...pairs.flat());
-const read = (value, key) => c.option_$o_unwrap(c.get(value, t[key]));
+const read = (value, key) => c.option_$o_unwrap(c.get(value, t[key] ?? c.init_tags([key])[key]));
 const op = (key, ...args) => decode_op(c._$o__$o_(t[key], ...args));
 const chapter = (id) => normalize_chapter(map(t.id, id, t.title, `Title ${id}`, t.summary, "Summary", t.content, "Body"), id);
 
@@ -71,4 +71,114 @@ test("fill-text checks input and preserves explicit submit false", () => {
   assert.deepEqual(submits[0].slice(0, 3), ["default submit", false, false]);
   assert.throws(() => send(map(tags.text, 42)), /string/i);
   assert.equal(updates.length, 2);
+});
+
+test("SDK interaction outputs become checked text and tool records", () => {
+  const result = app.extract_interaction_outputs({
+    id: "offline-interaction",
+    outputs: [
+      { type: "text", text: "合成回复 🐈" },
+      { type: "function_call", id: "call-1", name: "get-chapter", arguments: { chapterId: "T" } },
+      { type: "thought", text: "not answer text" },
+    ],
+  });
+  assert.equal(read(result, "text"), "合成回复 🐈");
+  assert.equal(read(result, "interaction-id"), "offline-interaction");
+  const calls = read(result, "function-calls");
+  assert.equal(c._$n_list_$o_count(calls), 1);
+  const call = c.option_$o_unwrap(c.first(calls));
+  assert.equal(read(call, "name"), "get-chapter");
+  assert.equal(read(read(call, "arguments"), "chapterId"), "T");
+  assert.equal(read(app.extract_interaction_outputs({ id: "empty" }), "text"), "");
+  assert.throws(() => app.extract_interaction_outputs({ id: 42 }), /string/i);
+  assert.throws(() => app.extract_interaction_outputs({ id: "bad", outputs: [{ type: "function_call", id: "x", name: "x", arguments: 42 }] }), /map/i);
+});
+
+test("chapter tools accept SDK objects and JSON strings without mutating old chapters", () => {
+  const chapters = map("A", chapter("A"), "T", chapter("T"));
+  const config = read(store, "novel-config");
+  const updates = [];
+  const dispatch = (value) => { updates.push(value); };
+  const get = app.handle_chapter_tool_call("get-chapter", { chapter_id: "T" }, chapters, dispatch, config);
+  assert.equal(read(get, "ok?"), true);
+  assert.equal(read(read(get, "chapter"), "title"), "Title T");
+  app.handle_chapter_tool_call("update-chapter-meta", JSON.stringify({ chapterId: "T", summary: "新概要" }), chapters, dispatch, config);
+  assert.equal(updates.length, 1);
+  const changed = updater(c.assoc(store, t.chapters, chapters), decode_op(updates[0]), "tool", 0);
+  assert.equal(read(read(changed, "chapters").get("T"), "summary"), "新概要");
+  assert.equal(read(read(changed, "chapters").get("T"), "title"), "Title T");
+  assert.equal(read(chapters.get("T"), "summary"), "Summary");
+  assert.throws(() => app.handle_chapter_tool_call("update-chapter-content", { chapterId: "T", content: 42 }, chapters, dispatch, config), /string/i);
+  assert.equal(updates.length, 1);
+});
+
+test("actual async SDK entry accepts an offline client and finishes after loading", async () => {
+  const oldClient = c.deref(app._$s_gen_ai_new);
+  const requests = [];
+  const updates = [];
+  const interactions = {
+    async create(request) {
+      assert.equal(this, interactions);
+      requests.push(request);
+      return { id: "offline-final", outputs: [{ type: "text", text: "离线完成 🐈" }] };
+    },
+    async get() { throw new Error("Unexpected interaction lookup for a text-only response"); },
+  };
+  c.reset_$x_(app._$s_gen_ai_new, { interactions });
+  try {
+    await app.call_genai_msg_v2_$x_(
+      c.init_tags(["gemini"]).gemini, c._$L_(), read(store, "chapters"), read(store, "novel-config"),
+      normalize_chat_state(null), "offline prompt", false, false, null,
+      (value) => { updates.push(decode_op(value)); }, c.ref(""), c.ref(""), c._PCT_none(),
+    );
+    assert.equal(requests.length, 1);
+    assert.equal(typeof requests[0].model, "string");
+    assert.ok(JSON.stringify(requests[0]).includes("offline prompt"));
+    let next = store;
+    const loading = [];
+    for (const update of updates) {
+      next = updater(next, update, "offline-sdk", 0);
+      loading.push(read(read(read(next, "states"), "data"), "loading?"));
+    }
+    assert.deepEqual(loading, [true, false]);
+    const state = read(read(next, "states"), "data");
+    assert.equal(read(state, "done?"), true);
+    assert.equal(c.option_$o_unwrap(read(state, "answer")), "离线完成 🐈");
+    assert.equal(c.option_$o_unwrap(read(state, "interaction-id")), "offline-final");
+  } finally {
+    c.reset_$x_(app._$s_gen_ai_new, oldClient);
+  }
+});
+
+test("offline agent tool round preserves the chapter mutation and final answer", async () => {
+  const oldClient = c.deref(app._$s_gen_ai_new);
+  const pending = { id: "offline-tool", outputs: [{ type: "function_call", id: "call-create", name: "create-chapter", arguments: { title: "离线章节", summary: "合成概要" } }] };
+  const final = { id: "offline-tool-final", outputs: [{ type: "text", text: "章节已创建" }] };
+  const requests = [];
+  const lookups = [];
+  let next = store;
+  c.reset_$x_(app._$s_gen_ai_new, {
+    interactions: {
+      async create(request) { requests.push(request); return requests.length === 1 ? pending : final; },
+      async get(id) { lookups.push(id); return id === pending.id ? pending : final; },
+    },
+  });
+  try {
+    await app.call_genai_msg_v2_$x_(
+      c.init_tags(["gemini"]).gemini, c._$L_(), read(store, "chapters"), read(store, "novel-config"),
+      normalize_chat_state(null), "offline tool prompt", false, false, null,
+      (value) => { next = updater(next, decode_op(value), "offline-tool", 0); }, c.ref(""), c.ref(""), c._PCT_none(),
+    );
+    assert.equal(requests.length, 2);
+    assert.equal(requests[1].previous_interaction_id, pending.id);
+    assert.equal(requests[1].input[0].call_id, "call-create");
+    assert.deepEqual(lookups, [pending.id, final.id]);
+    assert.equal(c.count(read(next, "chapters")), 1);
+    const state = read(read(next, "states"), "data");
+    assert.equal(read(state, "loading?"), false);
+    assert.equal(read(state, "done?"), true);
+    assert.equal(c.option_$o_unwrap(read(state, "answer")), "章节已创建");
+  } finally {
+    c.reset_$x_(app._$s_gen_ai_new, oldClient);
+  }
 });
