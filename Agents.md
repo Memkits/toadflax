@@ -1,4 +1,4 @@
-Use the project-pinned stable Calcit 0.27.0 CLI (`calcit`), and `yarn vite` to start a local server. Read `calcit docs agents --contract` and live command help before structured edits. Only `calcit.cirru` and `deps.cirru` are canonical; retired `compact.cirru` and `package.cirru` must not be recreated. Never text-edit the Snapshot. The `llms/` documents below preserve historical examples; their old `cr`, tuple/record, file and argument conventions do not override the current CLI or Option/Enum/Struct semantics.
+Use the project-pinned paired Calcit CLI/procs 0.30.1-alpha.5, and `yarn vite` to start a local server. This is a migration candidate, not a formal 0.30.1 release or completed migration claim. Read `calcit docs agents --contract` and live command help before structured edits. Only `calcit.cirru` and `deps.cirru` are canonical; retired `compact.cirru` and `package.cirru` must not be recreated. Never text-edit the Snapshot. The `llms/` documents below preserve historical examples; their old `cr`, tuple/record, file and argument conventions do not override the current CLI or Option/Enum/Struct semantics. Local Caps must not be run; independent CI handles strict dependency installation. Test AI paths with offline synthetic fixtures only, never real API keys or paid requests.
 
 - [llms/Calcit.md](llms/Calcit.md) | Calcit 语言工具指令，包括 `cr` 命令等。
 - [llms/Respo.md](llms/Respo.md) | UI 库使用说明。
@@ -18,13 +18,13 @@ Use the project-pinned stable Calcit 0.27.0 CLI (`calcit`), and `yarn vite` to s
 
 ## 常见错误与正确做法（结合本项目实践）
 
-- **`let` 只保留最后一个表达式**：多个表达式需要包一层 `div`/`do`，否则前面的节点会被丢掉。
+- **区分求值与渲染**：当前 Calcit 的 `let`/`defn` body 可顺序求值多个表达式，但只有最后一个值被父调用者消费。多个 UI 子节点应放在同一 `div` 等容器中；不要仅为顺序执行再加 `do`。
 - **属性 map 必须是成对键值**：避免把 `:style` 与 `:inner-text` 写在同一个 pair 内；每个属性单独成对。
 - **避免生成“可调用字符串”**：形如 `(<> ((str ...)))` 会变成调用结果，正确写法为 `<> $ str ...`。
 - **列表 vs set**：`keys` 返回 set，拼接前先 `.to-list`，再 `concat`。
 - **pairs 列表转 map**：不要用 `.to-map` 处理 list，改用 `pairs-map`。
 - **函数调用与变量区分**：`week-start` 这类变量必须 is-leaf，避免成为单元素 list 导致被当做“函数调用”。
-- **数值与单位风险**：CSS 属性如 `flex`, `font-weight`, `line-height`, `z-index` 若使用单纯数字，Respo 会自动拼接 `px` 单位。必须改为字符串形式，例如 `:flex "\"1"` 或 `:font-weight "\"300"`。
+- **数值与单位风险**：以当前已发布 Respo 的 unitless 属性合同和真实输出为准，不照搬旧文档将所有数字改成字符串；不要在迁移时无关修改样式。
 - **结构化编辑优先**：只编辑 canonical `calcit.cirru`，先用当前 `calcit` CLI 的 live help 确认命令，再定位定义并作局部结构化修改；不要恢复 `compact.cirru`。
 - **性能优化准则**：对于动态生成的列表（如任务项），应将静态样式从内联 `:style` 提取到 `defstyle` 中，通过 `:class-name` 引用以提升虚拟 DOM 性能。
 - **排序逻辑翻转**：翻转列表排序应直接修改 `sort` 函数所用比较器的返回分支（如将 `if ret 1 -1` 翻转为 `if ret -1 1`）。

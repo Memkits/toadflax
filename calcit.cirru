@@ -5,17 +5,17 @@
   :entries $ {} $ :default
     {} (:description |) (:init-fn 'app.main/main!) (:mode :js) (:reload-fn 'app.main/reload!) (:target :browser)
       :feature-policy $ {}
-      :modules $ [] |respo.calcit/ |lilac/ |memof/ |respo-ui.calcit/ |reel.calcit/ |respo-markdown.calcit/ |alerts.calcit/ |respo-feather.calcit/ |bisection-key/
+      :modules $ [] |respo.calcit/ |memof/ |respo-ui.calcit/ |reel.calcit/ |respo-markdown.calcit/ |alerts.calcit/ |respo-feather.calcit/ |bisection-key/ |js-ffi/
       :type-slots $ {}
   :files $ {}
     'app.comp.container $ %{} 'FileEntry
       :defs $ {}
         '*abort-control $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defatom *abort-control nil
+          :code $ quote $ defref *abort-control nil
           :examples $ []
           :schema $ :: 'Ref $ :: 'JsNullish 'AbortControl
         '*gen-ai-new $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defatom *gen-ai-new nil
+          :code $ quote $ defref *gen-ai-new nil
           :examples $ []
           :schema $ :: 'Ref $ :: 'JsNullish 'JsObject
         'AbortControl $ %{} 'CodeEntry (:doc |)
@@ -73,7 +73,7 @@
           :schema $ :: 'Trait
         'append-user-message $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn append-user-message (messages content)
-            conj messages $ {} (:role :user) (:content content)
+            append messages $ {} (:role :user) (:content content)
           :examples $ []
           :schema $ :: 'Fn $ {}
             :args $ []
@@ -101,15 +101,16 @@
                   js-array $ js-object (:role |user)
                     :content $ js-array $ js-object (:type |text) (:text content)
                   -> messages0
+                    filter $ fn (m)
+                      not $ blank? $ decode-map-as (read-field m :content) 'String
                     map $ fn (m)
                       let
-                          msg-content $ assert-type (read-field m :content) 'String
-                        if (blank? msg-content) nil $ js-object
+                          msg-content $ decode-map-as (read-field m :content) 'String
+                        js-object
                           :role $ if
                             = :assistant $ assert-type (read-field m :role) 'Tag
                             , |model |user
                           :content $ js-array $ js-object (:type |text) (:text msg-content)
-                    filter $ fn (x) (js-present? x)
                     , to-js-data
                 :tools tools-list
           :examples $ []
@@ -124,7 +125,6 @@
         'call-genai-msg-v2! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn call-genai-msg-v2!
             variant cursor chapters novel-config state prompt-text search? think? tools d! *text *thinking-text current-chapter-id
-            hint-fn $ {} $ :async true
             println "|call v2"
             if (js-nullish? @*gen-ai-new)
               reset! *gen-ai-new $ new GoogleGenAI $ js-object
@@ -179,8 +179,17 @@
                     :messages $ upsert-assistant-message messages1 answer-text nil
                     :interaction-id new-interaction-id
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Dynamic)
-            :args $ [] 'Dynamic 'Dynamic 'Dynamic 'Dynamic 'Dynamic 'Dynamic 'Dynamic 'Dynamic 'Dynamic 'Dynamic 'Dynamic 'Dynamic 'Dynamic
+          :schema $ :: 'Fn $ {} (:async true) (:return 'Unit)
+            :args $ [] 'Tag (:: 'List 'Dynamic)
+              :: 'Map 'String $ :: 'Map 'Tag 'Dynamic
+              :: 'Map 'Tag 'Dynamic
+              :: 'Map 'Tag 'Dynamic
+              , 'String 'Bool 'Bool (:: 'JsNullish 'JsObject)
+                :: 'Fn $ {} (:return 'Unit)
+                  :args $ [] 'Dynamic
+                :: 'Ref 'String
+                :: 'Ref 'String
+                :: 'JsNullish 'String
             :features $ #{} :js-ffi
         'chapter-tools-declarations $ %{} 'CodeEntry (:doc |)
           :code $ quote $ js-array
@@ -432,7 +441,8 @@
                     ; :confirm-class style-confirm
                     :items models-menu
                     :on-result $ fn (result d!)
-                      d! cursor $ assoc state :model $ option:unwrap-or (nth result 1) :gemini
+                      d! $ :: :states cursor $ assoc state :model
+                        option:unwrap-or (nth result 1) :gemini
                 reply-plugin $ use-prompt (>> states :reply-prompt)
                   {} (:text |Follow-up) (:placeholder "|Enter your follow-up") (:multiline? true) (:button-text |Send)
                     :validator $ fn (text)
@@ -454,7 +464,7 @@
                     :render $ fn (on-close)
                       comp-sessions-modal sessions
                         fn (session-id d!)
-                          d! cursor $ -> state
+                          d! $ :: :states cursor $ -> state
                             assoc :messages $ option:fold
                               find sessions $ fn (s)
                                 =
@@ -663,7 +673,8 @@
                     textarea $ {} (:value content) (:placeholder "|Prompt to try LLM...") (:id |message)
                       :class-name $ str-spaced css/textarea css/font-code! style-textbox
                       :on-input $ fn (e d!)
-                        d! cursor $ assoc state :content $ assert-type (read-field e :value) 'String
+                        d! $ :: :states cursor $ assoc state :content
+                          assert-type (read-field e :value) 'String
                       :on-keydown $ fn (e d!)
                         if
                           and
@@ -684,7 +695,7 @@
                         span
                           {} (:class-name style-clear)
                             :on-click $ fn (e d!)
-                              d! cursor $ assoc state :content |
+                              d! $ :: :states cursor $ assoc state :content |
                               option:fold (browser/query-selector |#message)
                                 fn () &unit
                                 fn (target) (browser/element-focus! target)
@@ -697,14 +708,14 @@
                             {}
                               :class-name $ str-spaced css/row style-checkbox
                               :on-click $ fn (e d!)
-                                d! cursor $ assoc state :think? $ not think?
+                                d! $ :: :states cursor $ assoc state :think? (not think?)
                             input $ {} (:checked think?) (:type |checkbox)
                             <> |Think css/font-fancy
                           div
                             {}
                               :class-name $ str-spaced css/row style-checkbox
                               :on-click $ fn (e d!)
-                                d! cursor $ assoc state :search? $ not search?
+                                d! $ :: :states cursor $ assoc state :search? (not search?)
                             input $ {} (:checked search?) (:type |checkbox)
                             <> |Search css/font-fancy
                           button $ {}
@@ -715,7 +726,7 @@
                               on-submit content search? think? d!
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
-            :args $ [] (:: 'Map 'Tag 'Dynamic) 'respo.schema/Element 'Dynamic
+            :args $ [] (:: 'Map 'Dynamic 'Dynamic) 'respo.schema/Element 'Dynamic
             :features $ #{} :js-ffi
         'comp-novel-settings $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-novel-settings (states novel-config)
@@ -740,7 +751,8 @@
                       , 'String
                     :class-name css/input
                     :on-input $ fn (e d!)
-                      d! cursor $ assoc state :title $ assert-type (read-field e :value) 'String
+                      d! $ :: :states cursor $ assoc state :title
+                        assert-type (read-field e :value) 'String
                 div
                   {} $ :class-name css/column
                   div
@@ -753,21 +765,25 @@
                     :class-name $ str-spaced css/textarea style-settings-textarea
                     :placeholder "|Enter your novel's overall settings, world building, character profiles, etc."
                     :on-input $ fn (e d!)
-                      d! cursor $ assoc state :content $ assert-type (read-field e :value) 'String
+                      d! $ :: :states cursor $ assoc state :content
+                        assert-type (read-field e :value) 'String
                 div
                   {} (:class-name css/row-middle)
                     :style $ {} (:gap 12) (:margin-top 16)
                   button
                     {} (:class-name css/button)
-                      :on-click $ fn (e d!) (println "|[Settings Save] Saving state:" state) (d! :update-novel-config state) (d! :router :home)
+                      :on-click $ fn (e d!) (println "|[Settings Save] Saving state:" state)
+                        d! $ :: :update-novel-config state
+                        d! $ :: :router :home
                     <> |Save
                   button
                     {} (:class-name css/button)
-                      :on-click $ fn (e d!) (d! :router :home)
+                      :on-click $ fn (e d!)
+                        d! $ :: :router :home
                     <> |Cancel
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
-            :args $ [] (:: 'Map 'Tag 'Dynamic) (:: 'Map 'Tag 'Dynamic)
+            :args $ [] (:: 'Map 'Dynamic 'Dynamic) (:: 'Map 'Tag 'Dynamic)
         'comp-sessions-modal $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-sessions-modal (sessions on-select on-close)
             div
@@ -817,7 +833,8 @@
               div
                 {}
                   :class-name $ str-spaced css/row-middle style-logo
-                  :on-click $ fn (e d!) (d! :router :home)
+                  :on-click $ fn (e d!)
+                    d! $ :: :router :home
                 comp-i :trello 20 |black
                 =< 8 nil
                 div ({}) (<> |Toadflax)
@@ -825,9 +842,12 @@
                 {} $ :class-name css/row-middle
                 a
                   {} (:class-name css/link)
-                    :on-click $ fn (e d!) (d! :router :settings)
+                    :on-click $ fn (e d!)
+                      d! $ :: :router :settings
                   <> "|Novel Settings"
           :examples $ []
+          :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
+            :args $ []
         'create-session $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn create-session (messages model)
             let
@@ -965,46 +985,37 @@
                 neighbor-summaries $ fn (chapter-key)
                   let
                       idx $ option:unwrap-or
-                        index-of sorted-keys $ assert-type chapter-key 'String
+                        index-of sorted-keys $ decode-map-as chapter-key 'String
                         , -1
-                      prev-key $ if (> idx 0)
-                        option:unwrap-or
+                      previous $ if (> idx 0)
+                        option:fold
                           get sorted-keys $ dec idx
-                          , nil
-                        , nil
-                      next-key $ if
-                        < idx $ dec $ count sorted-keys
-                        option:unwrap-or
+                          fn () $ Option :none
+                          fn (key) (get chapters0 key)
+                        Option :none
+                      next $ if
+                        and (>= idx 0)
+                          < idx $ dec $ count sorted-keys
+                        option:fold
                           get sorted-keys $ inc idx
-                          , nil
-                        , nil
-                      prev-ch $ if (some? prev-key)
-                        option:unwrap-or
-                          get
-                            assert-type chapters0 $ :: 'Map 'String 'Dynamic
-                            assert-type prev-key 'String
-                          , nil
-                        , nil
-                      next-ch $ if (some? next-key)
-                        option:unwrap-or
-                          get
-                            assert-type chapters0 $ :: 'Map 'String 'Dynamic
-                            assert-type next-key 'String
-                          , nil
-                        , nil
+                          fn () $ Option :none
+                          fn (key) (get chapters0 key)
+                        Option :none
                     {}
-                      :previous $ if (some? prev-ch)
-                        {}
-                          :id $ read-field prev-ch :order-key
-                          :title $ read-field prev-ch :title
-                          :summary $ read-field prev-ch :summary
-                        , nil
-                      :next $ if (some? next-ch)
-                        {}
-                          :id $ read-field next-ch :order-key
-                          :title $ read-field next-ch :title
-                          :summary $ read-field next-ch :summary
-                        , nil
+                      :previous $ option:fold previous
+                        fn () nil
+                        fn (chapter)
+                          {}
+                            :id $ read-field chapter :order-key
+                            :title $ read-field chapter :title
+                            :summary $ read-field chapter :summary
+                      :next $ option:fold next
+                        fn () nil
+                        fn (chapter)
+                          {}
+                            :id $ read-field chapter :order-key
+                            :title $ read-field chapter :title
+                            :summary $ read-field chapter :summary
                 title $ unsafe-coerce
                   or (.-title args0) |Untitled
                   , 'String
@@ -1138,14 +1149,13 @@
             :args $ [] (:: 'List 'Dynamic) (:: 'Map 'Tag 'Dynamic) 'Dynamic
         'pick-model $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn pick-model (variant)
-            case-default variant |gemini-3-flash-preview (:gemini-pro |gemini-3-pro-preview) (:gemini-flash-lite |gemini-2.5-flash-lite)
+            match variant (:gemini-pro |gemini-3-pro-preview) (:gemini-flash-lite |gemini-2.5-flash-lite) (_ |gemini-3-flash-preview)
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'String)
             :args $ [] 'Tag
         'run-agent-loop-v2! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn run-agent-loop-v2!
             gen-ai model interaction-id chapters novel-config d! cursor state messages1 *text *thinking-text max-rounds tools
-            hint-fn $ {} $ :async true
             println "|looping round:" max-rounds |id: interaction-id
             if (<= max-rounds 0)
               do (js/console.warn "|Max rounds reached")
@@ -1198,8 +1208,18 @@
                           :interaction-id final-interaction-id
                         js-await $ run-agent-loop-v2! gen-ai model final-interaction-id chapters novel-config d! cursor state messages1 *text *thinking-text (dec max-rounds) tools
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Dynamic)
-            :args $ [] 'Dynamic 'Dynamic 'Dynamic 'Dynamic 'Dynamic 'Dynamic 'Dynamic 'Dynamic 'Dynamic 'Dynamic 'Dynamic 'Dynamic 'Dynamic
+          :schema $ :: 'Fn $ {} (:async true) (:return 'Unit)
+            :args $ [] 'app.comp.container/GenAiClient 'String 'String
+              :: 'Map 'String $ :: 'Map 'Tag 'Dynamic
+              :: 'Map 'Tag 'Dynamic
+              :: 'Fn $ {} (:return 'Unit)
+                :args $ [] 'Dynamic
+              :: 'List 'Dynamic
+              :: 'Map 'Tag 'Dynamic
+              :: 'List $ :: 'Map 'Tag 'Dynamic
+              :: 'Ref 'String
+              :: 'Ref 'String
+              , 'Number $ :: 'JsNullish 'JsObject
             :features $ #{} :js-ffi
         'save-current-session $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn save-current-session (store state)
@@ -1229,10 +1249,12 @@
               |& $ {} (:cursor :pointer) (:background-color :white) (:color :black)
               "|.focus-within &" $ {} $ :color :black
           :examples $ []
+          :schema $ :: 'String
         'style-abort-close $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-abort-close
             {} $ |& $ {} (:vertical-align :middle) (:font-size 10)
           :examples $ []
+          :schema $ :: 'String
         'style-app-global $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-app-global
             {}
@@ -1244,6 +1266,7 @@
               |&:hover $ {} (:color |#777)
                 :background-color $ hsl 0 0 100
           :examples $ []
+          :schema $ :: 'String
         'style-chapter-create $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-chapter-create
             {}
@@ -1254,6 +1277,7 @@
                 :font-size |12px
               |&:hover $ {} $ :background-color (hsl 0 0 96)
           :examples $ []
+          :schema $ :: 'String
         'style-chapter-delete $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-chapter-delete
             {}
@@ -1263,6 +1287,7 @@
                 :cursor :pointer
               |&:hover $ {} $ :opacity 1
           :examples $ []
+          :schema $ :: 'String
         'style-chapter-item $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-chapter-item
             {}
@@ -1273,26 +1298,31 @@
                 :position :relative
               |&:hover $ {} $ :background-color (hsl 0 0 96)
           :examples $ []
+          :schema $ :: 'String
         'style-chapter-item-active $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-chapter-item-active
             {} $ |& $ {}
               :background-color $ hsl 200 80 96
               :border $ str "|1px solid " $ hsl 200 80 80
           :examples $ []
+          :schema $ :: 'String
         'style-chapter-list $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-chapter-list
             {} $ |& $ {} (:display :flex) (:flex-direction :column) (:gap |8px)
           :examples $ []
+          :schema $ :: 'String
         'style-chapter-summary $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-chapter-summary
             {} $ |& $ {} (:margin-top |4px) (:font-size |12px)
               :color $ hsl 0 0 50
           :examples $ []
+          :schema $ :: 'String
         'style-chapter-title $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-chapter-title
             {} $ |& $ {} (:font-size |14px) (:font-weight |600)
               :color $ hsl 0 0 20
           :examples $ []
+          :schema $ :: 'String
         'style-chat-panel $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-chat-panel
             {} $ |& $ {} (:width |600px)
@@ -1302,14 +1332,17 @@
               :flex-direction :column
               :min-width 0
           :examples $ []
+          :schema $ :: 'String
         'style-checkbox $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-checkbox
             {} $ |& $ {} (:cursor :pointer) (:user-select :none) (:font-size 12) (:line-height |28px) (:vertical-align :middle)
           :examples $ []
+          :schema $ :: 'String
         'style-clear $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-clear
             {} $ |& $ {} (:opacity 0.4) (:padding "|4px 8px") (:display :inline-block) (:height |24px)
           :examples $ []
+          :schema $ :: 'String
         'style-clear-button $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-clear-button
             {}
@@ -1317,10 +1350,12 @@
                 :color $ hsl 0 80 60
               |&:hover $ {} $ :opacity 1
           :examples $ []
+          :schema $ :: 'String
         'style-code-content $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-code-content
             {} $ |& $ {} (:line-height |1.5) (:font-size 13)
           :examples $ []
+          :schema $ :: 'String
         'style-delete-button $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-delete-button
             {}
@@ -1335,18 +1370,21 @@
               |&:active $ {} (:opacity 1)
                 :color $ hsl 0 90 40
           :examples $ []
+          :schema $ :: 'String
         'style-empty-state $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-empty-state
             {} $ |& $ {} (:padding |12px)
               :color $ hsl 0 0 60
               :font-size |13px
           :examples $ []
+          :schema $ :: 'String
         'style-empty-text $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-empty-text
             {} $ |& $ {}
               :color $ hsl 0 0 65
               :font-style |italic
           :examples $ []
+          :schema $ :: 'String
         'style-fill $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-fill
             {}
@@ -1357,6 +1395,7 @@
                 :color $ hsl 0 0 40
                 :transform "|scale(1.06)"
           :examples $ []
+          :schema $ :: 'String
         'style-font-code $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def style-font-code "|Source Code Pro, monospace"
           :examples $ []
@@ -1367,6 +1406,7 @@
           :code $ quote $ defstyle style-gap12
             {} $ |& $ {} (:gap 12)
           :examples $ []
+          :schema $ :: 'String
         'style-history-button $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-history-button
             {} $ |& $ {} (:font-size |20px)
@@ -1378,6 +1418,7 @@
               :justify-content :center
               |&:hover $ {} $ :color (hsl 200 80 50)
           :examples $ []
+          :schema $ :: 'String
         'style-history-count $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-history-count
             {} $ |& $ {}
@@ -1385,37 +1426,45 @@
               :font-size |12px
               :display :inline-block
           :examples $ []
+          :schema $ :: 'String
         'style-logo $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-logo
             {} $ |& $ {} (:font-size 24) (:cursor :pointer) (:font-family style-font-fancy) (:font-weight |600)
               :color $ hsl 200 80 40
           :examples $ []
+          :schema $ :: 'String
         'style-main-layout $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-main-layout
             {} $ |& $ {} (:display :flex) (:flex |1) (:min-height 0)
           :examples $ []
+          :schema $ :: 'String
         'style-md-content $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-md-content
             {} $ "|& .md-p" $ {} (:margin "|16px 0") (:line-height |1.6)
           :examples $ []
+          :schema $ :: 'String
         'style-message-actions $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-message-actions
             {} $ |& $ {} (:margin-top 6) (:justify-content :flex-end) (:width |100%)
           :examples $ []
+          :schema $ :: 'String
         'style-message-area $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-message-area
             {} $ |& $ {} (:flex 2) (:overflow :scroll)
           :examples $ []
+          :schema $ :: 'String
         'style-message-assistant $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-message-assistant
             {} $ |& $ {} (:align-self :flex-start)
           :examples $ []
+          :schema $ :: 'String
         'style-message-box $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-message-box
             {}
               |& $ {} (:width |100%) (:max-width |100%) (:padding |8px) (:margin 0) (:transition-duration |300ms) (:transition-property |height)
               |&:focus-within $ {} $ :opacity 1
           :examples $ []
+          :schema $ :: 'String
         'style-message-box-panel $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-message-box-panel
             {}
@@ -1424,14 +1473,17 @@
                 :border-top $ str "|1px solid " $ hsl 0 0 90
               |&.focus-within $ {} $ :background-color (hsl 0 0 100)
           :examples $ []
+          :schema $ :: 'String
         'style-message-item $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-message-item
             {} $ |& $ {} (:line-height |1.6)
           :examples $ []
+          :schema $ :: 'String
         'style-message-list $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-message-list
             {} $ |& $ {} (:flex 2) (:padding "|40px 24px 20vh 24px") (:width |100%) (:max-width |1400px) (:margin :auto) (:position :relative)
           :examples $ []
+          :schema $ :: 'String
         'style-message-role $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-message-role
             {} $ |& $ {} (:font-size 12)
@@ -1439,10 +1491,12 @@
               :margin-bottom 6
               :padding-right |16px
           :examples $ []
+          :schema $ :: 'String
         'style-message-text $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-message-text
             {} $ |& $ {} (:white-space :pre-wrap) (:line-height |1.6) (:margin 0) (:padding-right |16px)
           :examples $ []
+          :schema $ :: 'String
         'style-message-user $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-message-user
             {}
@@ -1459,6 +1513,7 @@
                 :border-radius |2px
               |&::-webkit-scrollbar-track $ {} $ :background-color :transparent
           :examples $ []
+          :schema $ :: 'String
         'style-more $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-more
             {}
@@ -1472,15 +1527,18 @@
               |&:hover $ {} $ :box-shadow
                 str "|1px 1px 4px " $ hsl 0 0 0 0.2
           :examples $ []
+          :schema $ :: 'String
         'style-preview $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-preview
             {} $ |& $ {} (:flex |1) (:min-width 0) (:padding "|16px 20px") (:overflow :auto)
           :examples $ []
+          :schema $ :: 'String
         'style-preview-content $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-preview-content
             {} $ |& $ {} (:padding "|8px 0")
               :color $ hsl 0 0 20
           :examples $ []
+          :schema $ :: 'String
         'style-preview-summary $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-preview-summary
             {} $ |& $ {} (:font-size |13px)
@@ -1488,16 +1546,19 @@
               :margin-bottom |12px
               :line-height |1.5
           :examples $ []
+          :schema $ :: 'String
         'style-preview-title $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-preview-title
             {} $ |& $ {} (:font-size |20px) (:font-weight |600)
               :color $ hsl 0 0 20
               :margin-bottom |8px
           :examples $ []
+          :schema $ :: 'String
         'style-reply-actions $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-reply-actions
             {} $ |& $ {} (:margin "|8px 12px") (:justify-content :flex-start) (:width |100%)
           :examples $ []
+          :schema $ :: 'String
         'style-reply-button $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-reply-button
             {}
@@ -1511,6 +1572,7 @@
               |&:hover $ {} $ :box-shadow
                 str "|1px 1px 4px " $ hsl 0 0 0 0.2
           :examples $ []
+          :schema $ :: 'String
         'style-section-title $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-section-title
             {} $ |& $ {} (:font-size |12px) (:font-weight |600)
@@ -1519,6 +1581,7 @@
               :text-transform |uppercase
               :letter-spacing |0.5px
           :examples $ []
+          :schema $ :: 'String
         'style-session-item $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-session-item
             {} $ |& $ {} (:padding |12px)
@@ -1529,28 +1592,34 @@
               :gap |12px
               |:hover $ {} $ :background-color (hsl 0 0 96)
           :examples $ []
+          :schema $ :: 'String
         'style-sessions-list $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-sessions-list
             {} $ |& $ {} (:flex |1) (:overflow-y :auto) (:min-width |300px)
           :examples $ []
+          :schema $ :: 'String
         'style-settings-label $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-settings-label
             {} $ |& $ {} (:font-size 13)
               :color $ hsl 0 0 60
               :margin-bottom 4
           :examples $ []
+          :schema $ :: 'String
         'style-settings-page $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-settings-page
             {} $ |& $ {} (:padding 24) (:gap 16) (:max-width 800) (:min-width |80%) (:margin :auto)
           :examples $ []
+          :schema $ :: 'String
         'style-settings-textarea $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-settings-textarea
             {} $ |& $ {} (:height 400) (:font-family style-font-code)
           :examples $ []
+          :schema $ :: 'String
         'style-settings-title $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-settings-title
             {} $ |& $ {} (:font-size 20) (:font-weight |600) (:margin-bottom 16)
           :examples $ []
+          :schema $ :: 'String
         'style-sidebar $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-sidebar
             {} $ |& $ {} (:width |320px)
@@ -1559,21 +1628,25 @@
               :overflow-y :auto
               :padding "|12px 12px"
           :examples $ []
+          :schema $ :: 'String
         'style-sidebar-header $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-sidebar-header
             {} $ |& $ {} (:padding "|4px 4px 8px 4px") (:font-size 12)
               :color $ hsl 0 0 50
           :examples $ []
+          :schema $ :: 'String
         'style-submit $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-submit
             {} $ |& $ {}
           :examples $ []
+          :schema $ :: 'String
         'style-textbox $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-textbox
             {}
               |& $ {} (:border-radius 12) (:height "|max(100px,15vh)") (:width |100%) (:transition-duration |320ms) (:border :none) (:background-color :transparent)
               |&.focus-within $ {} (:height "|max(240px,32vh)") (:border :none) (:box-shadow :none)
           :examples $ []
+          :schema $ :: 'String
         'style-thinking $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-thinking
             {}
@@ -1587,16 +1660,17 @@
                 :border $ str "|1px solid " $ hsl 0 0 90
               "|& .md-p" $ {} $ :margin "|4px 0"
           :examples $ []
+          :schema $ :: 'String
         'style-top-bar $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-top-bar
             {} $ |& $ {} (:height |48px) (:padding "|0 16px")
               :border-bottom $ str "|1px solid " $ hsl 0 0 90
               :background-color $ hsl 0 0 98
           :examples $ []
+          :schema $ :: 'String
         'submit-message! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn submit-message!
             cursor chapters novel-config state prompt-text search? think? model d! current-chapter-id tools
-            hint-fn $ {} $ :async true
             let
                 chapters0 $ assert-type chapters $ :: 'Map 'String (:: 'Map 'Tag 'Dynamic)
                 state0 $ assert-type state $ :: 'Map 'Tag 'Dynamic
@@ -1636,20 +1710,28 @@
                   option:unwrap-or (get state0 :messages) ([])
                   :: 'List $ :: 'Map 'Tag 'Dynamic
                 state1 $ assoc state0 :messages $ append-user-message messages0 full-prompt
-                *text $ atom |
-                *thinking-text $ atom |
-                model0 $ unsafe-coerce (read-field state0 :model) 'String
-              d! cursor state1
+                *text $ ref |
+                *thinking-text $ ref |
+                model0 model
+              d! $ :: :states cursor state1
               try
                 js-await $ call-genai-msg-v2! model0 cursor chapters0 novel-config state1 full-prompt search? think? tools d! *text *thinking-text current-id
                 fn (e)
                   let
                       err-text $ str "|Failed to load: " e
-                    d! cursor $ -> state0 (assoc :answer err-text) (assoc :loading? false) (assoc :done? true)
+                    d! $ :: :states cursor $ -> state0 (assoc :answer err-text) (assoc :loading? false) (assoc :done? true)
                       assoc :messages $ upsert-assistant-message messages0 err-text nil
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Dynamic)
-            :args $ [] 'Dynamic 'Dynamic 'Dynamic 'Dynamic 'Dynamic 'Dynamic 'Dynamic 'Dynamic 'Dynamic 'Dynamic 'Dynamic
+          :schema $ :: 'Fn $ {} (:async true) (:return 'Unit)
+            :args $ [] (:: 'List 'Dynamic)
+              :: 'Map 'String $ :: 'Map 'Tag 'Dynamic
+              :: 'Map 'Tag 'Dynamic
+              :: 'Map 'Tag 'Dynamic
+              , 'String 'Bool 'Bool 'Tag
+                :: 'Fn $ {} (:return 'Unit)
+                  :args $ [] 'Dynamic
+                :: 'JsNullish 'String
+                :: 'JsNullish 'JsObject
             :features $ #{} :js-ffi
         'upsert-assistant-message $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn upsert-assistant-message (messages content thinking)
@@ -1662,7 +1744,7 @@
                   = :assistant $ read-field (option:unwrap last-msg) :role
                 assoc messages0 (dec size)
                   -> (option:unwrap last-msg) (assoc :content content) (assoc :thinking thinking)
-                conj messages0 $ {} (:role :assistant) (:content content) (:thinking thinking)
+                append messages0 $ {} (:role :assistant) (:content content) (:thinking thinking)
           :examples $ []
           :schema $ :: 'Fn $ {}
             :args $ []
@@ -1684,7 +1766,7 @@
             memof.once :refer $ memof1-call memof1-call-by
             |@google/genai :refer $ GoogleGenAI Modality
             feather.core :refer $ comp-i
-            respo-alerts.core :refer $ [] use-modal-menu use-prompt use-drawer
+            respo-alerts.core :refer $ use-modal-menu use-prompt use-drawer
             bisection-key.core :refer $ bisect min-id mid-id max-id
             js-ffi.shared :as shared
             js-ffi.browser :as browser
@@ -1705,7 +1787,7 @@
     'app.main $ %{} 'FileEntry
       :defs $ {}
         '*reel $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defatom *reel
+          :code $ quote $ defref *reel
             -> reel-schema/reel (assoc :base schema/store) (assoc :store schema/store)
           :examples $ []
         'dispatch! $ %{} 'CodeEntry (:doc |)
@@ -1722,7 +1804,7 @@
             println "|Running mode:" $ if config/dev? |dev |release
             if config/dev? $ load-console-formatter!
             render-app!
-            add-watch *reel :changes $ fn (reel prev) (render-app!)
+            add-watch! *reel :changes $ fn (reel prev) (render-app!)
             listen-devtools! |k dispatch!
             js/window.addEventListener |beforeunload $ fn (event) (persist-storage!)
             js/window.addEventListener |visibilitychange $ fn (event)
@@ -1761,8 +1843,8 @@
         'reload! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn reload! ()
             if (nil? build-errors)
-              do (remove-watch *reel :changes) (clear-cache!)
-                add-watch *reel :changes $ fn (reel prev) (render-app!)
+              do (remove-watch! *reel :changes) (clear-cache!)
+                add-watch! *reel :changes $ fn (reel prev) (render-app!)
                 reset! *reel $ assert-type
                   refresh-reel (deref *reel) schema/store updater
                   :: 'Map 'Tag 'Dynamic
@@ -1823,11 +1905,14 @@
                   println "|[Store Update] novel-config:" $ read-field result :novel-config
                   , result
               (:router r) (assoc store :router r)
-              (:states cursor s) (update-states store cursor s)
+              (:states cursor s)
+                if (list? cursor) (update-states store cursor s) (raise "|Expected state cursor List")
               (:states-merge cursor s changes)
-                let
-                    store1 $ update-states-merge store cursor s changes
-                  , store1
+                if (list? cursor)
+                  let
+                      store1 $ update-states-merge store cursor s changes
+                    , store1
+                  raise "|Expected state cursor List"
               (:hydrate-storage data)
                 let
                     result $ merge store $ assert-type data (:: 'Map 'Tag 'Dynamic)
@@ -1835,7 +1920,7 @@
                   , result
               (:save-session state)
                 let
-                    store1 $ save-current-session store state
+                    store1 $ save-current-session store $ decode-map-as state (:: 'Map 'Tag 'Dynamic)
                   assoc store1 :current-session-id nil
               (:session session-id id) (assoc store :current-session-id id)
               (:remove-session id)
