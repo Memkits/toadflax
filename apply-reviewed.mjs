@@ -34,13 +34,28 @@ assert.equal(test.name,'legacy-map-struct-roundtrip');assert.deepEqual(test.tags
 walk(test.code,[],normalizer.id,testCounts,true);
 assert.deepEqual(testCounts,{'option:unwrap':3,'option:unwrap-or':0,'option:fold':0,merge:0});
 ops.push(['edit','add-test',normalizer.id,test.name,'--overwrite','--tags',test.tags.join(','),'--input-format','json-ast','--code',JSON.stringify(test.code)]);
+// The existing public tool result deliberately uses nil for an absent neighbor.
+// Match exposes that nil/map union without forcing fold's single return slot
+// from its first callback; keep both wire values and lazy branch evaluation.
+const handler=expected.defs.find(d=>d.id==='app.comp.container/handle-chapter-tool-call');
+for(const [index,receiver] of [[1,'previous'],[2,'next']]){
+  const path=[4,1,3,1,3,2,index,1];
+  const original=path.reduce((x,i)=>x[i],before.defs.find(d=>d.id===handler.id).code);
+  assert.deepEqual(show(handler.id,path),original);
+  const parent=path.slice(0,-1).reduce((x,i)=>x[i],handler.code),old=parent[path.at(-1)];
+  assert.equal(old[0],'.fold');assert.equal(old[1],receiver);
+  assert.deepEqual(old[2],['fn',[],'nil']);assert.deepEqual(old[3][1],['chapter']);
+  const replacement=['match',receiver,[[":none"],'nil'],[[":some",'chapter'],old[3][2]]];
+  parent[path.at(-1)]=replacement;
+  ops.push(['tree','replace',handler.id,'--path','@'+path.join('.'),'--input-format','json-ast','--code',JSON.stringify(replacement)]);
+}
 const main=expected.defs.find(d=>d.id==='app.main/main!'),oldMain=before.defs.find(d=>d.id===main.id);
 assert.deepEqual(show(main.id,[11]),oldMain.code[11]);assert.deepEqual(show(main.id,[5]),['render-app!']);
 assert.equal(main.code[11][0],'match');assert.equal(main.code[11][1][0],'browser/storage-get');assert.equal(main.code[11][2][1][0],'dispatch!');
 const restore=main.code.splice(11,1)[0];main.code.splice(5,0,restore);
 ops.push(['tree','delete',main.id,'--path','@11']);
 ops.push(['tree','insert',main.id,'--path','@5','--at','before','--input-format','json-ast','--code',JSON.stringify(restore),'--expect','quote $ render-app!']);
-assert.equal(ops.length,78);
+assert.equal(ops.length,80);
 mkdirSync('acceptance',{recursive:true});
 for(const [name,value] of Object.entries({before,expected,sites,operations:ops}))writeFileSync('acceptance/'+name+'.json',JSON.stringify(value,null,2));
 const args=['edit','transaction','--file','acceptance/operations.json','--format','json'];
@@ -51,4 +66,4 @@ assert.deepEqual(after,expected);
 for(const id of ['app.main/reload!','app.main/persist-storage!'])assert.deepEqual(after.defs.find(d=>d.id===id),before.defs.find(d=>d.id===id));
 assert.equal(after.defs.length,134);
 writeFileSync('acceptance/after.json',JSON.stringify(after,null,2));writeFileSync('acceptance/snapshot-after-blob.txt',blob());
-writeFileSync('acceptance/summary.json',JSON.stringify({definitions:134,attachedTests:1,examples:0,operations:78,codeCounts,testCounts,preserved:'All other code/schema/FFI/imports/config/tags/doc and original attached assertions/name/tags/input/expected, actual HUD/reload and persist format, all SDK/model/proxy/paid-service behavior unchanged; no new helper/test/cast/budget',startup:'restore now occurs before first render and before persistence/watch/devtools/input registrations'},null,2));
+writeFileSync('acceptance/summary.json',JSON.stringify({definitions:134,attachedTests:1,examples:0,operations:80,codeCounts,testCounts,neighborResults:'Two nil/map fold expressions use explicit Option match; original nil and map wire values preserved',preserved:'All other code/schema/FFI/imports/config/tags/doc and original attached assertions/name/tags/input/expected, actual HUD/reload and persist format, all SDK/model/proxy/paid-service behavior unchanged; no new helper/test/cast/budget',startup:'restore now occurs before first render and before persistence/watch/devtools/input registrations'},null,2));
