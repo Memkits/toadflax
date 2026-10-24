@@ -17,6 +17,7 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
     - name: Check out repository
       uses: actions/checkout@v7.0.1
@@ -57,9 +58,14 @@ jobs:
         test ! -e compact.cirru
         test ! -e package.cirru
         calcit calcit.cirru edit format
-        git diff --exit-code -- calcit.cirru
-        calcit --check-only --ns app.comp.container --ns app.config --ns app.main --ns app.schema --ns app.updater --summary-only
-        calcit fix --workflow strict --verify
+        git diff --quiet -- calcit.cirru
+        calcit --check-only --all-defs
+        report="$(calcit fix --workflow strict --verify --format json)"
+        printf '%s\n' "$report"
+        jq -e '.data.workflow.status? == "passed" and .diagnostics? == []' <<< "$report"
+        calcit analyze weak-types --only coverage --summary-only --format json
+        calcit analyze weak-types --only schema-dynamic,code-dynamic --intent unresolved --summary-only --format json
+        calcit analyze weak-types --only deprecated-call --summary-only --format json | jq -e '.data.summary.calls == 0'
         calcit test app.schema/normalize-store --require-match
 
     - name: Select CDN asset path
@@ -87,6 +93,7 @@ jobs:
 
     - name: Upload and verify static assets on COS
       if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+      timeout-minutes: 10
       uses: worktools/cos-upload-action@v1.2.0
       with:
         source-dir: dist
