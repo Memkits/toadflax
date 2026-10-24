@@ -52,7 +52,7 @@
           :code $ quote $ defn build-v2-request (model content messages0 prev-interaction-id tools-list chapters current-chapter-id)
             if (.some? prev-interaction-id)
               js-object (:model model)
-                :previous_interaction_id $ option:unwrap prev-interaction-id
+                :previous_interaction_id $ .unwrap prev-interaction-id
                 :input $ if
                   not $ blank? content
                   js-array $ js-object (:type |text) (:text content)
@@ -350,7 +350,7 @@
                           order-key $ :order-key ch
                           current-key current-id
                         [] order-key $ comp-chapter-item ch
-                          option:fold current-key
+                          .fold current-key
                             fn () false
                             fn (selected) (= order-key selected)
                           , on-select on-delete
@@ -399,16 +399,16 @@
                 current-chapter $ get-current-chapter chapters current-chapter-id
                 states $ :states store
                 cursor $ decode-map-as
-                  option:unwrap-or (get states :cursor) ([])
+                  .unwrap-or (get states :cursor) ([])
                   :: 'List 'Dynamic
-                state $ schema/normalize-chat-state $ option:unwrap-or (get states :data) nil
+                state $ schema/normalize-chat-state $ .unwrap-or (get states :data) nil
                 done? $ :done? state
                 messages $ :messages state
                 model $ :model state
                 is-viewing-history? $ if (.some? current-session-id)
-                  option:fold
+                  .fold
                     find sessions $ fn (s)
-                      = (:id s) (option:unwrap current-session-id)
+                      = (:id s) (.unwrap current-session-id)
                     fn () false
                     fn (session) (:is-history? session)
                   , false
@@ -423,7 +423,7 @@
                     :on-result $ fn (result d!)
                       d! $ :: :states cursor $ assoc state :model
                         decode-map-as
-                          option:unwrap-or (nth result 1) :gemini
+                          .unwrap-or (nth result 1) :gemini
                           , 'Tag
                 reply-plugin $ use-prompt (>> states :reply-prompt)
                   {} (:text |Follow-up) (:placeholder "|Enter your follow-up") (:multiline? true) (:button-text |Send)
@@ -435,7 +435,7 @@
                     :validator $ fn (text)
                       hint-fn $ {} $ :args ([] 'String)
                       if (blank? text) "|Please enter description" nil
-                message-box-state $ schema/normalize-message-box-state $ option:unwrap-or
+                message-box-state $ schema/normalize-message-box-state $ .unwrap-or
                   get (>> states :message-box) :data
                   , nil
                 sessions-plugin $ use-drawer (>> states :sessions-modal)
@@ -454,7 +454,7 @@
                       comp-sessions-modal sessions
                         fn (session-id d!)
                           d! $ :: :states cursor $ -> state
-                            assoc :messages $ option:fold
+                            assoc :messages $ .fold
                               find sessions $ fn (s)
                                 = (:id s) (assert-type session-id 'String)
                               fn () $ []
@@ -493,7 +493,7 @@
                                 :args $ [] 'String
                                 :return 'Unit
                               let
-                                  prompt-with-context $ option:fold last-ch
+                                  prompt-with-context $ .fold last-ch
                                     fn () $ str &newline &newline text
                                     fn (chapter)
                                       str |[previous-chapter-summary] (:summary chapter) &newline text
@@ -501,7 +501,7 @@
                               , &unit
                           , &unit
                       if (.some? current-chapter)
-                        comp-chapter-preview (option:unwrap current-chapter)
+                        comp-chapter-preview (.unwrap current-chapter)
                           fn (d!)
                             .show generate-content-plugin d! $ fn (text)
                               hint-fn $ {}
@@ -543,7 +543,7 @@
                                 [] idx $ let
                                     role $ :role msg
                                     content $ :content msg
-                                    thinking $ option:unwrap-or (:thinking msg) |
+                                    thinking $ .unwrap-or (:thinking msg) |
                                   div
                                     {} $ :class-name $ str-spaced style-message-item
                                       if (= role :assistant) style-message-assistant style-message-user
@@ -651,9 +651,9 @@
           :code $ quote $ defcomp comp-message-box (states picker-el on-submit)
             let
                 cursor $ decode-map-as
-                  option:unwrap-or (get states :cursor) ([])
+                  .unwrap-or (get states :cursor) ([])
                   :: 'List 'Dynamic
-                state $ schema/normalize-message-box-state $ option:unwrap-or (get states :data) nil
+                state $ schema/normalize-message-box-state $ .unwrap-or (get states :data) nil
                 content $ :content state
                 search? $ :search? state
                 think? $ :think? state
@@ -701,7 +701,7 @@
                                     :return 'Unit
                                 :return 'Unit
                               d! $ :: :states cursor $ assoc state :content |
-                              option:fold (browser/query-selector |#message)
+                              .fold (browser/query-selector |#message)
                                 fn () &unit
                                 fn (target) (browser/element-focus! target)
                               , &unit
@@ -763,9 +763,9 @@
           :code $ quote $ defcomp comp-novel-settings (states novel-config)
             let
                 cursor $ decode-map-as
-                  option:unwrap-or (get states :cursor) ([])
+                  .unwrap-or (get states :cursor) ([])
                   :: 'List 'Dynamic
-                state $ option:fold (get states :data)
+                state $ .fold (get states :data)
                   fn () novel-config
                   fn (value)
                     if (nil? value) novel-config $ schema/normalize-novel-config value
@@ -930,7 +930,7 @@
         'create-session $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn create-session (messages model)
             let
-                first-msg $ option:fold (first messages)
+                first-msg $ .fold (first messages)
                   fn () "|New chat"
                   fn (message) (:content message)
                 end $ if
@@ -947,7 +947,7 @@
           :code $ quote $ defeffect effect-focus () (action el at?)
             when (= action :mount)
               browser/set-timeout!
-                fn () $ option:fold
+                fn () $ .fold
                   browser/element-query-selector (browser/element-host el) |textarea
                   fn () &unit
                   fn (target)
@@ -982,42 +982,42 @@
             let
                 data $ sdk-object-data interaction
                 outputs $ decode-map-as
-                  option:unwrap-or (get data :outputs) ([])
+                  .unwrap-or (get data :outputs) ([])
                   :: 'List $ :: 'Map 'Tag 'Dynamic
                 text-output $ find outputs $ fn (output)
                   =
                     decode-map-as
-                      option:unwrap $ get output :type
+                      .unwrap $ get output :type
                       , 'String
                     , |text
                 function-calls $ map
                   filter outputs $ fn (output)
                     =
                       decode-map-as
-                        option:unwrap $ get output :type
+                        .unwrap $ get output :type
                         , 'String
                       , |function_call
                   fn (output)
                     schema/ToolCall :name
                       decode-map-as
-                        option:unwrap $ get output :name
+                        .unwrap $ get output :name
                         , 'String
                       , :arguments
                         decode-map-as
-                          option:unwrap $ get output :arguments
+                          .unwrap $ get output :arguments
                           :: 'Map 'Tag 'Dynamic
                         , :id $ decode-map-as
-                          option:unwrap $ get output :id
+                          .unwrap $ get output :id
                           , 'String
               schema/InteractionResult :text
-                option:fold text-output
+                .fold text-output
                   fn () |
                   fn (output)
                     decode-map-as
-                      option:unwrap-or (get output :text) |
+                      .unwrap-or (get output :text) |
                       , 'String
                 , :function-calls function-calls :interaction-id $ decode-map-as
-                  option:unwrap $ get data :id
+                  .unwrap $ get data :id
                   , 'String
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'app.schema/InteractionResult)
@@ -1031,7 +1031,7 @@
             :args $ []
         'get-current-chapter $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn get-current-chapter (chapters selected)
-            option:fold selected
+            .fold selected
               fn () $ Option :none
               fn (key) (get chapters key)
           :examples $ []
@@ -1044,7 +1044,7 @@
                 key $ browser/storage-get-or |gemini-key |
               if (blank? key)
                 let
-                    v $ option:unwrap-or (browser/prompt! "|Required gemini-key in localStorage") |
+                    v $ .unwrap-or (browser/prompt! "|Required gemini-key in localStorage") |
                   if (blank? v) (raise "|key is empty")
                     do (browser/storage-set! |gemini-key v) v
                 , key
@@ -1059,7 +1059,7 @@
                 &set:to-list $ keys chapters
                 , &compare
               fn (key)
-                option:unwrap $ get chapters key
+                .unwrap $ get chapters key
           :examples $ []
           :schema $ :: 'Fn $ {}
             :args $ [] $ :: 'Map 'String 'app.schema/Chapter
@@ -1077,11 +1077,11 @@
                     :args $ [] 'String
                     :return $ :: 'Map 'Tag 'Dynamic
                   let
-                      idx $ option:unwrap-or
+                      idx $ .unwrap-or
                         index-of sorted-keys $ decode-map-as chapter-key 'String
                         , -1
                       previous $ if (> idx 0)
-                        option:fold
+                        .fold
                           get sorted-keys $ dec idx
                           fn () $ Option :none
                           fn (key) (get chapters0 key)
@@ -1089,22 +1089,22 @@
                       next $ if
                         and (>= idx 0)
                           < idx $ dec $ count sorted-keys
-                        option:fold
+                        .fold
                           get sorted-keys $ inc idx
                           fn () $ Option :none
                           fn (key) (get chapters0 key)
                         Option :none
                     {}
-                      :previous $ option:fold previous
-                        fn () nil
-                        fn (chapter)
+                      :previous $ match previous
+                        (:none) nil
+                        (:some chapter)
                           {}
                             :id $ :order-key chapter
                             :title $ :title chapter
                             :summary $ :summary chapter
-                      :next $ option:fold next
-                        fn () nil
-                        fn (chapter)
+                      :next $ match next
+                        (:none) nil
+                        (:some chapter)
                           {}
                             :id $ :order-key chapter
                             :title $ :title chapter
@@ -1135,36 +1135,36 @@
                   {} (:ok? true)
                     :chapters $ map sorted-keys $ fn (k)
                       let
-                          ch $ option:unwrap $ get chapters0 k
+                          ch $ .unwrap $ get chapters0 k
                         {} (:id k) (:order-key k)
                           :title $ :title ch
                           :summary $ :summary ch
                 (= tool-name |get-chapter)
-                  option:fold (get chapters0 chapter-id)
+                  .fold (get chapters0 chapter-id)
                     fn () $ {} (:ok? false) (:error |Chapter-not-found)
                     fn (ch)
                       {} (:ok? true) (:chapter ch)
                 (= tool-name |create-chapter)
                   let
                       new-key $ if (empty? chapters0) mid-id $ bisect
-                        option:unwrap $ last sorted-keys
+                        .unwrap $ last sorted-keys
                         , max-id
                       new-chapter $ {} (:order-key new-key) (:title title) (:summary summary) (:content |)
                     d! $ :: :create-chapter-with title summary |
                     {} (:ok? true) (:chapter new-chapter)
                 (= tool-name |create-chapter-after)
                   let
-                      idx $ option:unwrap-or (index-of sorted-keys after-id) -1
+                      idx $ .unwrap-or (index-of sorted-keys after-id) -1
                       next-key $ if
                         and (>= idx 0)
                           < idx $ dec $ count sorted-keys
-                        option:unwrap-or
+                        .unwrap-or
                           get sorted-keys $ inc idx
                           , max-id
                         , max-id
                       new-key $ if (>= idx 0) (bisect after-id next-key)
                         if (empty? chapters0) mid-id $ bisect
-                          option:unwrap $ last sorted-keys
+                          .unwrap $ last sorted-keys
                           , max-id
                       new-chapter $ {} (:order-key new-key) (:title title) (:summary summary) (:content |)
                     d! $ :: :create-chapter-after after-id title summary |
@@ -1177,7 +1177,7 @@
                   let
                       title1 $ read-field args0 :title
                       summary1 $ read-field args0 :summary
-                      updates $ merge
+                      updates $ .merge
                         if
                           not $ nil? title1
                           {} $ :title $ decode-map-as title1 'String
@@ -1189,10 +1189,10 @@
                     d! $ :: :update-chapter chapter-id updates
                     {} $ :ok? true
                 (= tool-name |get-chapter-with-neighbors)
-                  option:fold (get chapters0 chapter-id)
+                  .fold (get chapters0 chapter-id)
                     fn () $ {} (:ok? false) (:error |Chapter-not-found)
                     fn (ch)
-                      merge
+                      .merge
                         {} (:ok? true) (:chapter ch)
                         neighbor-summaries chapter-id
                 (= tool-name |get-novel-config)
@@ -1277,7 +1277,7 @@
                       :messages $ upsert-assistant-message messages1 (:text result) (Option :none)
                       :interaction-id new-interaction-id
                   let
-                      first-call $ option:unwrap $ first function-calls
+                      first-call $ .unwrap $ first function-calls
                       tool-name $ :name first-call
                       tool-args $ :arguments first-call
                       call-id $ :id first-call
@@ -1768,30 +1768,30 @@
                 sorted-keys $ sort
                   &set:to-list $ keys chapters0
                   , &compare
-                idx $ option:fold current-id
+                idx $ .fold current-id
                   fn () -1
                   fn (key)
-                    option:unwrap-or (index-of sorted-keys key) -1
+                    .unwrap-or (index-of sorted-keys key) -1
                 context $ if (>= idx 0)
                   let
-                      curr-ch $ option:unwrap $ get chapters0 (option:unwrap current-id)
+                      curr-ch $ .unwrap $ get chapters0 (.unwrap current-id)
                       prev-text $ if (> idx 0)
-                        option:fold
+                        .fold
                           get sorted-keys $ dec idx
                           fn () |
                           fn (prev-key)
-                            option:fold (get chapters0 prev-key)
+                            .fold (get chapters0 prev-key)
                               fn () |
                               fn (prev-ch)
                                 str |prev: (:title prev-ch) "| "
                         , |
                       next-text $ if
                         < idx $ dec $ count sorted-keys
-                        option:fold
+                        .fold
                           get sorted-keys $ inc idx
                           fn () |
                           fn (next-key)
-                            option:fold (get chapters0 next-key)
+                            .fold (get chapters0 next-key)
                               fn () |
                               fn (next-ch)
                                 str |next: (:title next-ch) "| "
@@ -1865,7 +1865,7 @@
       :defs $ {}
         'dev? $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def dev?
-            = |dev $ option:unwrap-or (get-env |mode) |release
+            = |dev $ .unwrap-or (get-env |mode) |release
           :examples $ []
           :schema $ :: 'Bool
         'site $ %{} 'CodeEntry (:doc |)
@@ -1913,6 +1913,11 @@
           :code $ quote $ defn main! ()
             println |Running-mode: $ if config/dev? |dev |release
             when config/dev? $ load-console-formatter!
+            match
+              browser/storage-get $ .unwrap $ get config/site :storage-key
+              (:some content)
+                dispatch! $ :: :hydrate-storage $ parse-cirru-edn content
+              (:none) &unit
             render-app!
             add-watch! *reel :changes $ fn (reel prev) (render-app!)
             listen-devtools! |k dispatch!
@@ -1922,11 +1927,6 @@
                 (:hidden) (persist-storage!)
                 _ &unit
             install-input-policy!
-            match
-              browser/storage-get $ option:unwrap $ get config/site :storage-key
-              (:some content)
-                dispatch! $ :: :hydrate-storage $ parse-cirru-edn content
-              (:none) &unit
             println |App-started.
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'Unit)
@@ -2210,7 +2210,7 @@
                       data $ data-map raw
                       messages $ map
                         decode-map-as
-                          option:unwrap-or (get data :messages) ([])
+                          .unwrap-or (get data :messages) ([])
                           :: 'List 'Dynamic
                         fn (message) (normalize-chat-message message)
                       base $ decode-map-as
@@ -2239,11 +2239,11 @@
                 (:some typed) typed
                 (:none)
                   let
-                      data $ merge (&struct:to-map chat-state)
+                      data $ .merge (&struct:to-map chat-state)
                         if (nil? raw) ({}) (data-map raw)
                       messages $ map
                         decode-map-as
-                          option:unwrap-or (get data :messages) ([])
+                          .unwrap-or (get data :messages) ([])
                           :: 'List 'Dynamic
                         fn (message) (normalize-chat-message message)
                       patched $ -> data
@@ -2275,7 +2275,7 @@
                 (:some typed) typed
                 (:none)
                   decode-map-as
-                    merge (&struct:to-map message-box-state)
+                    .merge (&struct:to-map message-box-state)
                       if (nil? raw) ({}) (data-map raw)
                     , 'MessageBoxState
           :examples $ []
@@ -2300,7 +2300,7 @@
                 (:some typed) typed
                 (:none)
                   decode-map-as
-                    merge (&struct:to-map novel-config) (data-map raw)
+                    .merge (&struct:to-map novel-config) (data-map raw)
                     , 'NovelConfig
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'app.schema/NovelConfig)
@@ -2309,7 +2309,7 @@
             :generics $ [] 'T
         'normalize-optional-field $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn normalize-optional-field (data key decode)
-            option:fold (get data key)
+            .fold (get data key)
               fn () data
               fn (raw)
                 assoc data key $ cond
@@ -2346,19 +2346,19 @@
                 (:some typed) typed
                 (:none)
                   let
-                      data $ merge (&struct:to-map store) (data-map raw)
+                      data $ .merge (&struct:to-map store) (data-map raw)
                       sessions $ map
                         decode-map-as
-                          option:unwrap-or (get data :sessions) ([])
+                          .unwrap-or (get data :sessions) ([])
                           :: 'List 'Dynamic
                         fn (session) (normalize-chat-session session)
                       chapters $ filter-map-kv
                         decode-map-as
-                          option:unwrap-or (get data :chapters) ({})
+                          .unwrap-or (get data :chapters) ({})
                           :: 'Map 'String 'Dynamic
                         fn (key chapter)
                           MapEntryDecision :keep key $ normalize-chapter chapter key
-                      config $ option:fold (get data :novel-config)
+                      config $ .fold (get data :novel-config)
                         fn () novel-config
                         fn (value) (normalize-novel-config value)
                       patched $ -> data
@@ -2392,9 +2392,9 @@
                   :router :home
                   :novel-config $ {} (:title "|合成小说") (:content "|世界设定")
                 normalized $ normalize-store legacy
-                session $ option:unwrap $ first (:sessions normalized)
-                message $ option:unwrap $ first (:messages session)
-                chapter $ option:unwrap $ get (:chapters normalized) |T
+                session $ .unwrap $ first (:sessions normalized)
+                message $ .unwrap $ first (:messages session)
+                chapter $ .unwrap $ get (:chapters normalized) |T
                 restored $ normalize-store $ parse-cirru-edn (format-cirru-edn normalized)
               assert= "|合成 中文" $ :content message
               assert= (Option :none) (:thinking message)
@@ -2430,7 +2430,7 @@
           :code $ quote $ defn updater (store op op-id op-time)
             match op
               (:update-novel-config updates)
-                assoc store :novel-config $ schema/normalize-novel-config $ merge
+                assoc store :novel-config $ schema/normalize-novel-config $ .merge
                   &struct:to-map $ :novel-config store
                   , updates
               (:router route) (assoc store :router route)
@@ -2440,11 +2440,11 @@
                   if (map? tree) (assoc store :states tree) (raise |Expected-state-map)
               (:states-merge cursor state changes)
                 let
-                    next-state $ schema/normalize-chat-state $ merge (&struct:to-map state) changes
+                    next-state $ schema/normalize-chat-state $ .merge (&struct:to-map state) changes
                     tree $ respo.cursor/update-state-tree (:states store) cursor next-state
                   if (map? tree) (assoc store :states tree) (raise |Expected-state-map)
               (:hydrate-storage data)
-                schema/normalize-store $ merge (&struct:to-map store) data
+                schema/normalize-store $ .merge (&struct:to-map store) data
               (:save-session state)
                 assoc (save-current-session store state) :current-session-id $ Option :none
               (:session mode id)
@@ -2457,7 +2457,7 @@
                 let
                     chapters $ :chapters store
                     key $ if (empty? chapters) mid-id $ bisect
-                      option:unwrap $ last $ sort
+                      .unwrap $ last $ sort
                         &set:to-list $ keys chapters
                         , &compare
                       , max-id
@@ -2469,7 +2469,7 @@
                 let
                     chapters $ :chapters store
                     key $ if (empty? chapters) mid-id $ bisect
-                      option:unwrap $ last $ sort
+                      .unwrap $ last $ sort
                         &set:to-list $ keys chapters
                         , &compare
                       , max-id
@@ -2483,13 +2483,13 @@
                     sorted $ sort
                       &set:to-list $ keys chapters
                       , &compare
-                    idx $ option:unwrap-or (index-of sorted after-key) -1
-                    next $ option:unwrap-or
+                    idx $ .unwrap-or (index-of sorted after-key) -1
+                    next $ .unwrap-or
                       get sorted $ inc idx
                       , max-id
                     key $ if (>= idx 0) (bisect after-key next)
                       if (empty? chapters) mid-id $ bisect
-                        option:unwrap $ last sorted
+                        .unwrap $ last sorted
                         , max-id
                     chapter $ schema/Chapter :order-key key :id (Option :none) :title title :summary summary :content content
                   -> store
@@ -2506,7 +2506,7 @@
                   get (:chapters store) key
                   (:some chapter)
                     assoc store :chapters $ assoc (:chapters store) key $ schema/normalize-chapter
-                      merge (&struct:to-map chapter) updates
+                      .merge (&struct:to-map chapter) updates
                       , key
                   (:none) store
           :examples $ []

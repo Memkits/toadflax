@@ -27,10 +27,17 @@ Configurations:
 刷新恢复；空闲时不会再显示 Loading。它们不等于真实服务验收，多工具/多轮和取消仍需审阅。
 不使用真实 API key 或调用付费模型，不合并或部署生产；本轮正式图仍需独立完成全部门禁和实际验收。
 
-本轮准备清理代码及附带测试中的旧 Option helper，Map merge 使用接收者方法，
+本轮清理代码及附带测试中的旧 Option helper，Map merge 使用接收者方法，
 保留原默认值和原断言。启动先成功恢复存档及首次渲染，再注册保存/watch/输入策略，
 避免加载失败后离页或 visibilitychange 覆盖原值。解析失败的保护不等于全量存档结构校验。
+两处邻章查询用显式 Option match 表达缺失 nil / 存在摘要 Map，保留原工具协议，
+不以强转规避 `.fold` 的单一返回类型推导。
 保留真正的 `hud!` 热更新成功/错误路径，不改成 raise；不增加质量预算、永久审计脚本或测试框架。
+
+正式准备 CI [40120640765](https://github.com/Memkits/toadflax/actions/runs/40120640765)
+已通过严格依赖安装、工具链配对、全定义检查、完整 strict（诊断为空）、原存档测试、
+原 11 项离线 JS 测试及生产构建。生成源码经官方产物 SHA256 和全部 134 个定义视图核对。
+这不等于最终 PR 上传、浏览器交互或坏存档启动/离页验收已经完成，也不是生产部署授权。
 
 声明依赖采用已发布正式 tag，不使用 main/hash；移除没有应用导入/调用的 Lilac，
 仍保留实际使用的 Markdown、Memof、Alerts 和 Bisection Key。历史说明和模型信息以实际代码为准，
@@ -45,7 +52,7 @@ https://github.com/calcit-lang/respo-calcit-workflow
 
 使用配对的正式 Calcit/procs `0.30.1`，不要混用全局旧 CLI。安装 JS 依赖执行
 `yarn install --immutable`。Calcit 模块的正式 tag 已声明在 `deps.cirru`；严格 Caps 安装及
-工具链检查由独立 CI 验收，本候选尚未完成该项，不把本地复用模块当作全新安装的证据。
+工具链检查已由上述独立准备 CI 验收，不把本地复用模块当作全新安装的证据；最终 PR CI 仍需另行通过。
 本地不执行 Caps（包括只读命令）或编译/检查/codegen/Snapshot mutation；只读 query/tree 视图允许，写入与完整门禁由官方 Linux 0.30.1 CI 执行。Node 24、Yarn 4.18.0、Vite 8.3.3。
 
 Only `calcit.cirru` and `deps.cirru` are canonical; CI rejects retired
