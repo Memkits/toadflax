@@ -1,0 +1,74 @@
+name: Prepare reviewed Toadflax preferred calls
+on:
+  push:
+    branches: [prepare/toadflax-preferred031]
+permissions:
+  contents: read
+jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6.5.0
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - run: |
+          corepack enable
+          corepack prepare yarn@4.18.0 --activate
+      - uses: calcit-lang/setup-calcit@v1.5.0
+        with:
+          tools: calcit,caps
+          caps-version: "0.1.1"
+          deps-file: deps.cirru
+      - name: Resolve unchanged formal graph
+        run: |
+          set -euo pipefail
+          test "$(calcit -v)" = 0.30.1
+          caps --strict --ci
+          yarn install --immutable
+          caps verify --toolchain
+          git diff --quiet -- deps.cirru package.json yarn.lock .yarnrc.yml
+      - name: Complete original gates before edits
+        run: |
+          set -euo pipefail
+          mkdir -p acceptance
+          calcit edit format
+          git diff --quiet -- calcit.cirru
+          calcit --check-only --all-defs --format json > acceptance/all-before.json
+          calcit fix --workflow strict --verify --format json | tee acceptance/strict-before.json | jq -e '.data.workflow.status == "passed" and .diagnostics == []'
+          calcit analyze weak-types --only coverage --summary-only --format json > acceptance/coverage-before.json
+          calcit analyze weak-types --only schema-dynamic,code-dynamic --intent unresolved --summary-only --format json > acceptance/unresolved-before.json
+          calcit analyze weak-types --only deprecated-call --summary-only --format json | tee acceptance/deprecated-before.json | jq -e '.data.summary.calls == 0'
+          calcit test app.schema/normalize-store --require-match --format json | tee acceptance/tests-before.json
+          VITE_BASE_URL=./ yarn build
+          node --test tests/*.test.mjs | tee acceptance/js-before.tap
+      - name: Official guarded thirteen-call transaction
+        run: node apply-reviewed.mjs
+      - name: Complete original gates after edits
+        run: |
+          set -euo pipefail
+          calcit edit format
+          test "$(git hash-object calcit.cirru)" = "$(cat acceptance/snapshot-after-blob.txt)"
+          calcit --check-only --all-defs --format json > acceptance/all.json
+          calcit fix --workflow strict --verify --format json | tee acceptance/strict.json | jq -e '.data.workflow.status == "passed" and .diagnostics == []'
+          calcit analyze weak-types --only coverage --summary-only --format json > acceptance/coverage.json
+          calcit analyze weak-types --only schema-dynamic,code-dynamic --intent unresolved --summary-only --format json > acceptance/unresolved.json
+          calcit analyze weak-types --only deprecated-call --summary-only --format json | tee acceptance/deprecated.json | jq -e '.data.summary.calls == 0'
+          calcit test app.schema/normalize-store --require-match --format json | tee acceptance/tests.json
+          VITE_BASE_URL=./ yarn build
+          node --test tests/*.test.mjs | tee acceptance/js.tap
+          git diff --quiet -- tests deps.cirru package.json yarn.lock .yarnrc.yml .github/workflows/upload.yaml
+          cp calcit.cirru acceptance/snapshot.cirru
+          cp -R js-out acceptance/js-out
+          cp -R dist acceptance/dist
+      - uses: actions/upload-artifact@v7.0.2
+        if: always()
+        with:
+          name: toadflax-preferred-source
+          path: acceptance
+          if-no-files-found: error
+          retention-days: 30
