@@ -98,7 +98,7 @@
                 content prompt-text
                 messages0 $ :messages state
                 messages1 $ upsert-assistant-message messages0 | $ Option :none
-                _ $ println "|[→ LLM] Sending" (count messages1) |messages
+                _ $ println "|[→ LLM] Sending" (.len messages1) |messages
                 tools-list tools
                 prev-interaction-id $ :interaction-id state
               d! $ :: :states-merge cursor state $ {} (:answer nil) (:thinking nil) (:loading? true) (:done? false) (:messages messages1)
@@ -110,10 +110,10 @@
                   result $ extract-interaction-outputs interaction
                   answer-text $ :text result
                   function-calls $ :function-calls result
-                  _ $ println "|[← LLM] Response - text:" (js-present? answer-text) |function-calls: $ count function-calls
+                  _ $ println "|[← LLM] Response - text:" (js-present? answer-text) |function-calls: $ .len function-calls
                   new-interaction-id $ :interaction-id result
                 js/console.log "|interaction result:" result
-                println "|interaction result:" new-interaction-id |calls: $ count function-calls
+                println "|interaction result:" new-interaction-id |calls: $ .len function-calls
                 if
                   not $ empty? function-calls
                   js-await $ run-agent-loop-v2! gen-ai model new-interaction-id chapters novel-config d! cursor state messages1 *text *thinking-text 10 tools-list
@@ -531,9 +531,9 @@
                                 comp-i |clock 16 |currentColor
                               =< 4 nil
                               if
-                                > (count sessions) 0
+                                > (.len sessions) 0
                                 <>
-                                  str $ count sessions
+                                  str $ .len sessions
                                   str-spaced css/font-fancy style-history-count
                           div
                             {} $ :class-name $ str-spaced css/column style-message-list
@@ -566,7 +566,7 @@
                                       pre $ {} (:class-name style-message-text) (:inner-text content)
                                     if
                                       and (= role :assistant)
-                                        or done? $ not= idx $ dec (count messages)
+                                        or done? $ not= idx $ dec (.len messages)
                                       div
                                         {} $ :class-name $ str-spaced css/row-middle css/gap8 style-message-actions
                                         , nil $ comp-copy $ either content |
@@ -603,7 +603,7 @@
                                 :class-name $ str-spaced css/row-middle css/gap8
                             if
                               and
-                                > (count messages) 0
+                                > (.len messages) 0
                                 not is-viewing-history?
                               div
                                 {}
@@ -934,8 +934,8 @@
                   fn () "|New chat"
                   fn (message) (:content message)
                 end $ if
-                  < (count first-msg) 100
-                  count first-msg
+                  < (.len first-msg) 100
+                  .len first-msg
                   , 100
               schema/ChatSession :id (generate-session-id) :created-at
                 :timestamp $ shared/date-now-snapshot
@@ -1088,7 +1088,7 @@
                         Option :none
                       next $ if
                         and (>= idx 0)
-                          < idx $ dec $ count sorted-keys
+                          < idx $ dec $ .len sorted-keys
                         .fold
                           get sorted-keys $ inc idx
                           fn () $ Option :none
@@ -1157,7 +1157,7 @@
                       idx $ .unwrap-or (index-of sorted-keys after-id) -1
                       next-key $ if
                         and (>= idx 0)
-                          < idx $ dec $ count sorted-keys
+                          < idx $ dec $ .len sorted-keys
                         .unwrap-or
                           get sorted-keys $ inc idx
                           , max-id
@@ -1786,7 +1786,7 @@
                                 str |prev: (:title prev-ch) "| "
                         , |
                       next-text $ if
-                        < idx $ dec $ count sorted-keys
+                        < idx $ dec $ .len sorted-keys
                         .fold
                           get sorted-keys $ inc idx
                           fn () |
@@ -1832,7 +1832,7 @@
                   if
                     = :assistant $ :role previous
                     assoc messages
-                      dec $ count messages
+                      dec $ .len messages
                       , message
                     append messages message
                 (:none) (append messages message)
