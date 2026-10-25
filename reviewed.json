@@ -3,7 +3,7 @@
   "before": {
     "config": {
       "package": "app",
-      "version": null,
+      "version": "0.0.2",
       "selected_entry": null,
       "entries": [
         {
@@ -17963,7 +17963,7 @@
   "expected": {
     "config": {
       "package": "app",
-      "version": null,
+      "version": "0.0.2",
       "selected_entry": null,
       "entries": [
         {
