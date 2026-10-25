@@ -48,6 +48,12 @@ Respo 0.16.126、Bisection Key 0.0.37、js-ffi 0.2.6、Memof 0.0.40；保留真�
 
 ### Workflow
 
+长度调用收敛：11 处已声明为 List、2 处已声明为 String 的 `count` 改为 `.len`，
+字符串仍按 Unicode 字符计数，不改为 UTF-16 长度或 UTF-8 字节数。配置、存档、SDK、模型、
+HUD 和请求协议不变。官方 Linux 0.30.1 [准备 CI](https://github.com/Memkits/toadflax/actions/runs/40159604846)
+在修改前后均通过全部定义、完整 strict、原生存档测试、11 项离线 SDK 回归及构建；
+不代表真实服务、浏览器坏存档或生产部署验收。临时迁移脚本和工作流不进入此分支。
+
 https://github.com/calcit-lang/respo-calcit-workflow
 
 使用配对的正式 Calcit/procs `0.30.1`，不要混用全局旧 CLI。安装 JS 依赖执行
