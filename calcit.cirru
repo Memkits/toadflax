@@ -6,48 +6,41 @@
     {} (:description |) (:init-fn 'app.main/main!) (:mode :js) (:reload-fn 'app.main/reload!) (:target :browser)
       :feature-policy $ {}
       :modules $ [] |respo.calcit/ |memof/ |respo-ui.calcit/ |reel.calcit/ |respo-markdown.calcit/ |alerts.calcit/ |respo-feather.calcit/ |bisection-key/ |js-ffi/
-      :type-slots $ {}
+      :type-slots $ {} $ :dispatch-op 'app.schema/Op
   :files $ {}
     'app.comp.container $ %{} 'FileEntry
       :defs $ {}
         '*abort-control $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defref *abort-control nil
           :examples $ []
-          :schema $ :: 'Ref $ :: 'JsNullish 'js-ffi.shared/AbortControllerHost
+          :schema $ quote $ Ref (JsNullish js-ffi.shared/AbortControllerHost)
         '*gen-ai-new $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defref *gen-ai-new nil
           :examples $ []
-          :schema $ :: 'Ref $ :: 'JsNullish 'JsObject
+          :schema $ quote $ Ref (JsNullish JsObject)
         'GenAiClient $ %{} 'CodeEntry (:doc |)
           :code $ quote $ deftrait GenAiClient (:interactions 'GenAiInteractions)
           :examples $ []
           :ffi $ {} (:backend :js) (:kind :external-object)
-          :schema $ :: 'Trait
+          :schema $ quote Trait
         'GenAiInteractions $ %{} 'CodeEntry (:doc |)
           :code $ quote $ deftrait GenAiInteractions
-            .create $ :: 'Fn $ {}
-              :args $ [] 'app.comp.container/GenAiInteractions 'JsObject
-              :return 'js-ffi.shared/PromiseHost
-            .get $ :: 'Fn $ {}
-              :args $ [] 'app.comp.container/GenAiInteractions 'String
-              :return 'js-ffi.shared/PromiseHost
+            .create $ Fn app.comp.container/GenAiInteractions JsObject $ -> js-ffi.shared/PromiseHost
+            .get $ Fn app.comp.container/GenAiInteractions String $ -> js-ffi.shared/PromiseHost
           :examples $ []
           :ffi $ {} (:backend :js) (:kind :external-object)
-          :schema $ :: 'Trait
+          :schema $ quote Trait
         'append-user-message $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn append-user-message (messages content)
             append messages $ schema/ChatMessage :role :user :content content :thinking $ Option :none
           :examples $ []
-          :schema $ :: 'Fn $ {}
-            :args $ [] (:: 'List 'app.schema/ChatMessage) 'String
-            :return $ :: 'List 'app.schema/ChatMessage
+          :schema $ quote $ Fn (List app.schema/ChatMessage) String
+            -> $ List app.schema/ChatMessage
         'build-function-result-input $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn build-function-result-input (tool-name call-id result-text)
             js-array $ js-object (:type |function_result) (:name tool-name) (:call_id call-id) (:result result-text)
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'JsObject)
-            :args $ [] 'String 'String 'String
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn String String String (-> JsObject) (:features :js-ffi)
         'build-v2-request $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn build-v2-request (model content messages0 prev-interaction-id tools-list chapters current-chapter-id)
             if (.some? prev-interaction-id)
@@ -76,9 +69,7 @@
                     , to-js-data
                 :tools $ if (js-present? tools-list) tools-list js/undefined
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'JsObject)
-            :args $ [] 'String 'String (:: 'List 'app.schema/ChatMessage) (:: 'Option 'String) (:: 'JsNullish 'JsObject) (:: 'Map 'String 'app.schema/Chapter) (:: 'Option 'String)
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn String String (List app.schema/ChatMessage) (Option String) (JsNullish JsObject) (Map String app.schema/Chapter) (Option String) (-> JsObject) (:features :js-ffi)
         'call-genai-msg-v2! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn call-genai-msg-v2!
             variant cursor chapters novel-config state prompt-text search? think? tools d! *text *thinking-text current-chapter-id
@@ -101,7 +92,7 @@
                 _ $ println "|[→ LLM] Sending" (.len messages1) |messages
                 tools-list tools
                 prev-interaction-id $ :interaction-id state
-              d! $ :: :states-merge cursor state $ {} (:answer nil) (:thinking nil) (:loading? true) (:done? false) (:messages messages1)
+              d! $ app.schema/Op :states-merge cursor state $ {} (:answer nil) (:thinking nil) (:loading? true) (:done? false) (:messages messages1)
               let
                   request-obj $ build-v2-request model content messages0 prev-interaction-id tools-list chapters current-chapter-id
                   interaction $ js-await $
@@ -117,18 +108,19 @@
                 if
                   not $ empty? function-calls
                   js-await $ run-agent-loop-v2! gen-ai model new-interaction-id chapters novel-config d! cursor state messages1 *text *thinking-text 10 tools-list
-                  d! $ :: :states-merge cursor state $ {} (:answer answer-text) (:thinking nil) (:loading? false) (:done? true)
+                  d! $ app.schema/Op :states-merge cursor state $ {} (:answer answer-text) (:thinking nil) (:loading? false) (:done? true)
                     :messages $ upsert-assistant-message messages1 answer-text $ Option :none
                     :interaction-id new-interaction-id
+            , &unit
           :examples $ []
-          :schema $ :: 'Fn $ {} (:async true) (:return 'Unit)
-            :args $ [] 'Tag (:: 'List 'Dynamic) (:: 'Map 'String 'app.schema/Chapter) 'app.schema/NovelConfig 'app.schema/ChatState 'String 'Bool 'Bool (:: 'JsNullish 'JsObject)
-              :: 'Fn $ {} (:return 'Unit)
-                :args $ [] 'Dynamic
-              :: 'Ref 'String
-              :: 'Ref 'String
-              :: 'Option 'String
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn Tag (List respo.schema/CoordKey) (Map String app.schema/Chapter) app.schema/NovelConfig app.schema/ChatState String Bool Bool (JsNullish JsObject)
+            Fn app.schema/Op $ -> Unit
+            Ref String
+            Ref String
+            Option String
+            -> Unit
+            :features :js-ffi
+            :async
         'chapter-tools-declarations $ %{} 'CodeEntry (:doc |)
           :code $ quote $ js-array
             js-object (:name |pause) (:description "|Pause and wait for user input")
@@ -198,9 +190,7 @@
                 :required $ js-array
               :type |function
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'JsObject)
-            :args $ []
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn (-> JsObject) (:features :js-ffi)
         'comp-abort $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn comp-abort (t)
             span
@@ -214,24 +204,19 @@
                       do (js/console.warn |Aborting-prev)
                         shared/abort! $ js-cast abort 'js-ffi.shared/AbortControllerHost
               <> t
-              =< 8 nil
+              space-x 8
               <> "|✕" style-abort-close
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'respo.schema/Element)
-            :args $ [] 'String
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn String (-> respo.schema/Element) (:features :js-ffi)
         'comp-chapter-item $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-chapter-item (chapter selected? on-select on-delete)
             div
               {}
-                :class-name $ str-spaced style-chapter-item $ if selected? style-chapter-item-active nil
+                :class-name $ if selected? (str-spaced style-chapter-item style-chapter-item-active) style-chapter-item
                 :on-click $ fn (e d!)
-                  hint-fn $ {}
-                    :args $ [] (:: 'Map 'Tag 'Dynamic)
-                      :: 'Fn $ {}
-                        :args $ [] 'Dynamic
-                        :return 'Unit
-                    :return 'Unit
+                  hint-fn $ Fn (Map Tag Dynamic)
+                    Fn app.schema/Op $ -> Unit
+                    -> Unit
                   on-select (:order-key chapter) d!
                   , &unit
               div
@@ -239,34 +224,30 @@
                 <> $ :title chapter
               if
                 blank? $ :summary chapter
-                , nil $ div
+                Option :none
+                Option :some $ div
                   {} $ :class-name style-chapter-summary
                   <> $ :summary chapter
               span
                 {} (:class-name style-chapter-delete)
                   :on-click $ fn (e d!)
-                    hint-fn $ {}
-                      :args $ [] (:: 'Map 'Tag 'Dynamic)
-                        :: 'Fn $ {}
-                          :args $ [] 'Dynamic
-                          :return 'Unit
-                      :return 'Unit
-                    browser/event-stop-propagation! $ browser/event-host $ read-field e :event
+                    hint-fn $ Fn (Map Tag Dynamic)
+                      Fn app.schema/Op $ -> Unit
+                      -> Unit
+                    browser/event-stop-propagation! $ browser/event-host $ .unwrap (read-field e :event)
                     on-delete (:order-key chapter) d!
                     , &unit
                 <> "|✕"
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
-            :args $ [] 'app.schema/Chapter 'Bool
-              :: 'Fn $ {} (:return 'Unit)
-                :args $ [] 'String $ :: 'Fn
-                  {} (:return 'Unit)
-                    :args $ [] 'Dynamic
-              :: 'Fn $ {} (:return 'Unit)
-                :args $ [] 'String $ :: 'Fn
-                  {} (:return 'Unit)
-                    :args $ [] 'Dynamic
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn app.schema/Chapter Bool
+            Fn String
+              Fn app.schema/Op $ -> Unit
+              -> Unit
+            Fn String
+              Fn app.schema/Op $ -> Unit
+              -> Unit
+            -> respo.schema/Component
+            :features :js-ffi
         'comp-chapter-preview $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-chapter-preview (chapter on-generate)
             div
@@ -295,29 +276,25 @@
                   , "|(空)" $ :content chapter
               if
                 blank? $ :content chapter
-                div
+                Option :some $ div
                   {} $ :class-name $ str-spaced css/row-middle css/gap8
                   button
                     {}
                       :class-name $ str-spaced css/button
                       :on-click $ fn (e d!)
-                        hint-fn $ {}
-                          :args $ [] (:: 'Map 'Tag 'Dynamic)
-                            :: 'Fn $ {}
-                              :args $ [] 'Dynamic
-                              :return 'Unit
-                          :return 'Unit
+                        hint-fn $ Fn (Map Tag Dynamic)
+                          Fn app.schema/Op $ -> Unit
+                          -> Unit
                         on-generate d!
                         , &unit
                     <> "|生成正文"
-                , nil
+                Option :none
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
-            :args $ [] 'app.schema/Chapter $ :: 'Fn
-              {} (:return 'Unit)
-                :args $ [] $ :: 'Fn
-                  {} (:return 'Unit)
-                    :args $ [] 'Dynamic
+          :schema $ quote $ Fn app.schema/Chapter
+            Fn
+              Fn app.schema/Op $ -> Unit
+              -> Unit
+            -> respo.schema/Component
         'comp-chapter-sidebar $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-chapter-sidebar (chapters current-id on-select on-create on-delete on-generate-next)
             let
@@ -330,12 +307,9 @@
                   button
                     {} (:class-name style-chapter-create)
                       :on-click $ fn (e d!)
-                        hint-fn $ {}
-                          :args $ [] (:: 'Map 'Tag 'Dynamic)
-                            :: 'Fn $ {}
-                              :args $ [] 'Dynamic
-                              :return 'Unit
-                          :return 'Unit
+                        hint-fn $ Fn (Map Tag Dynamic)
+                          Fn app.schema/Op $ -> Unit
+                          -> Unit
                         on-create d!
                         , &unit
                     <> |New
@@ -358,38 +332,31 @@
                   {} (:class-name css/button)
                     :style $ {} $ :margin-top |16px
                     :on-click $ fn (e d!)
-                      hint-fn $ {}
-                        :args $ [] (:: 'Map 'Tag 'Dynamic)
-                          :: 'Fn $ {}
-                            :args $ [] 'Dynamic
-                            :return 'Unit
-                        :return 'Unit
+                      hint-fn $ Fn (Map Tag Dynamic)
+                        Fn app.schema/Op $ -> Unit
+                        -> Unit
                       on-generate-next d!
                       , &unit
                   <> "|Gen Next"
                 div $ {} $ :style
                   {} $ :height |200px
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
-            :args $ [] (:: 'Map 'String 'app.schema/Chapter) (:: 'Option 'String)
-              :: 'Fn $ {} (:return 'Unit)
-                :args $ [] 'String $ :: 'Fn
-                  {} (:return 'Unit)
-                    :args $ [] 'Dynamic
-              :: 'Fn $ {} (:return 'Unit)
-                :args $ [] $ :: 'Fn
-                  {} (:return 'Unit)
-                    :args $ [] 'Dynamic
-              :: 'Fn $ {} (:return 'Unit)
-                :args $ [] 'String $ :: 'Fn
-                  {} (:return 'Unit)
-                    :args $ [] 'Dynamic
-              :: 'Fn $ {} (:return 'Unit)
-                :args $ [] $ :: 'Fn
-                  {} (:return 'Unit)
-                    :args $ [] 'Dynamic
+          :schema $ quote $ Fn (Map String app.schema/Chapter) (Option String)
+            Fn String
+              Fn app.schema/Op $ -> Unit
+              -> Unit
+            Fn
+              Fn app.schema/Op $ -> Unit
+              -> Unit
+            Fn String
+              Fn app.schema/Op $ -> Unit
+              -> Unit
+            Fn
+              Fn app.schema/Op $ -> Unit
+              -> Unit
+            -> respo.schema/Component
         'comp-container $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defcomp comp-container (reel)
+          :code $ quote $ defcomp comp-container (reel on-control)
             let
                 store $ :store reel
                 sessions $ :sessions store
@@ -400,8 +367,8 @@
                 states $ :states store
                 cursor $ decode-map-as
                   .unwrap-or (get states :cursor) ([])
-                  :: 'List 'Dynamic
-                state $ schema/normalize-chat-state $ .unwrap-or (get states :data) nil
+                  List respo.schema/CoordKey
+                state $ schema/normalize-chat-state $ .unwrap-or (get states :data) ({})
                 done? $ :done? state
                 messages $ :messages state
                 model $ :model state
@@ -421,7 +388,7 @@
                     ; :confirm-class style-confirm
                     :items models-menu
                     :on-result $ fn (result d!)
-                      d! $ :: :states cursor $ assoc state :model
+                      d! $ app.schema/Op :states cursor $ assoc state :model
                         decode-map-as
                           .unwrap-or (nth result 1) :gemini
                           , 'Tag
@@ -437,30 +404,26 @@
                       if (blank? text) "|Please enter description" nil
                 message-box-state $ schema/normalize-message-box-state $ .unwrap-or
                   get (>> states :message-box) :data
-                  , nil
+                  {}
                 sessions-plugin $ use-drawer (>> states :sessions-modal)
                   {} (:title "|History Sessions")
                     :style $ {} (:min-width "||max(320px,30vw)\"") (:max-width |80vw)
                     :render $ fn (on-close)
-                      hint-fn $ {}
-                        :args $ [] $ :: 'Fn
-                          {}
-                            :args $ [] $ :: 'Fn
-                              {}
-                                :args $ [] 'Dynamic
-                                :return 'Unit
-                            :return 'Unit
-                        :return 'respo.schema/Component
+                      hint-fn $ Fn
+                        Fn
+                          Fn app.schema/Op $ -> Unit
+                          -> Unit
+                        -> respo.schema/Component
                       comp-sessions-modal sessions
                         fn (session-id d!)
-                          d! $ :: :states cursor $ -> state
+                          d! $ app.schema/Op :states cursor $ -> state
                             assoc :messages $ .fold
                               find sessions $ fn (s)
                                 = (:id s) (assert-type session-id 'String)
                               fn () $ []
                               fn (session) (:messages session)
                             assoc :done? true
-                          d! $ :: :session :session-id session-id
+                          d! $ app.schema/Op :session :session-id session-id
                         , on-close
                 create-next-chapter-plugin $ use-prompt (>> states :create-next-chapter)
                   {} (:title "|Plan Next Chapter") (:placeholder "|Describe what you want for the next chapter") (:multiline? true) (:button-text |Plan)
@@ -479,19 +442,17 @@
                       {} $ :class-name style-main-layout
                       comp-chapter-sidebar chapters current-chapter-id
                         fn (chapter-id d!)
-                          d! $ :: :select-chapter chapter-id
+                          d! $ app.schema/Op :select-chapter chapter-id
                         fn (d!)
-                          d! $ :: :create-chapter
+                          d! $ app.schema/Op :create-chapter
                         fn (chapter-id d!)
-                          d! $ :: :delete-chapter chapter-id
+                          d! $ app.schema/Op :delete-chapter chapter-id
                         fn (d!)
                           let
                               sorted $ get-sorted-chapters chapters
                               last-ch $ last sorted
                             .show create-next-chapter-plugin d! $ fn (text)
-                              hint-fn $ {}
-                                :args $ [] 'String
-                                :return 'Unit
+                              hint-fn $ Fn String $ -> Unit
                               let
                                   prompt-with-context $ .fold last-ch
                                     fn () $ str &newline &newline text
@@ -504,9 +465,7 @@
                         comp-chapter-preview (.unwrap current-chapter)
                           fn (d!)
                             .show generate-content-plugin d! $ fn (text)
-                              hint-fn $ {}
-                                :args $ [] 'String
-                                :return 'Unit
+                              hint-fn $ Fn String $ -> Unit
                               submit-message! cursor chapters novel-config state text false false model d! current-chapter-id nil
                               , &unit
                             , &unit
@@ -525,16 +484,22 @@
                             div
                               {} (:class-name css/row-middle) (:title |History)
                                 :style $ {} $ :cursor :pointer
-                                :on-click $ fn (e d!) (.show sessions-plugin d!) &unit
+                                :on-click $ fn (e d!)
+                                  hint-fn $ Fn respo.schema/RespoEvent
+                                    Fn app.schema/Op $ -> Unit
+                                    -> Unit
+                                  .show sessions-plugin d!
+                                  , &unit
                               div
                                 {} $ :class-name style-history-button
                                 comp-i |clock 16 |currentColor
-                              =< 4 nil
+                              space-x 4
                               if
                                 > (.len sessions) 0
-                                <>
+                                Option :some $ <>
                                   str $ .len sessions
                                   str-spaced css/font-fancy style-history-count
+                                Option :none
                           div
                             {} $ :class-name $ str-spaced css/column style-message-list
                             list->
@@ -552,11 +517,12 @@
                                       <> $ if (= role :assistant) |Assistant |You
                                     if
                                       not $ blank? thinking
-                                      div
+                                      Option :some $ div
                                         {} $ :class-name style-thinking
                                         memof1-call comp-md-block
                                           -> thinking $ either |
                                           {} $ :class-name style-md-content
+                                      Option :none
                                     if (= role :assistant)
                                       if (json-pattern? content)
                                         pre $ {} (:class-name style-code-content) (:inner-text content)
@@ -567,10 +533,10 @@
                                     if
                                       and (= role :assistant)
                                         or done? $ not= idx $ dec (.len messages)
-                                      div
+                                      Option :some $ div
                                         {} $ :class-name $ str-spaced css/row-middle css/gap8 style-message-actions
-                                        , nil $ comp-copy $ either content |
-                                      , nil
+                                        , nil $ comp-copy (either content |)
+                                      Option :none
                             ; if
                               and
                                 > (count messages) 0
@@ -582,9 +548,7 @@
                                     :class-name $ str-spaced css/button style-reply-button
                                     :on-click $ fn (e d!)
                                       .show reply-plugin d! $ fn (text)
-                                        hint-fn $ {}
-                                          :args $ [] 'String
-                                          :return 'Unit
+                                        hint-fn $ Fn String $ -> Unit
                                         submit-message! cursor chapters novel-config state text (:search? message-box-state) (:think? message-box-state) model d! current-chapter-id nil
                                         , &unit
                                       , &unit
@@ -595,17 +559,19 @@
                               div
                                 {} $ :class-name $ str-spaced css/row-middle css/gap8
                                 if (:loading? state)
-                                  div
+                                  Option :some $ div
                                     {} $ :style $ {} (:display :flex) (:justify-content :center) (:align-items :center) (:margin |8px)
                                     memof1-call-by :abort-streaming comp-abort |Loading...
-                                  , nil
-                              if done? $ div $ {}
-                                :class-name $ str-spaced css/row-middle css/gap8
+                                  Option :none
+                              if done?
+                                Option :some $ div $ {}
+                                  :class-name $ str-spaced css/row-middle css/gap8
+                                Option :none
                             if
                               and
                                 > (.len messages) 0
                                 not is-viewing-history?
-                              div
+                              Option :some $ div
                                 {}
                                   :class-name $ str-spaced css/row
                                   :style $ {} (:padding "|8px 0") (:margin-top |48px) (:justify-content :flex-end)
@@ -613,16 +579,22 @@
                                   {}
                                     :class-name $ str-spaced css/link style-clear-button
                                     :on-click $ fn (e d!)
-                                      d! $ :: :states-merge cursor state $ {}
+                                      hint-fn $ Fn respo.schema/RespoEvent
+                                        Fn app.schema/Op $ -> Unit
+                                        -> Unit
+                                      d! $ app.schema/Op :states-merge cursor state $ {}
                                         :messages $ []
                                   <> |Clear
-                              , nil
+                              Option :none
                         comp-message-box (>> states :message-box)
                           a $ {}
                             :inner-text $ or (to-string model) |-
                             :class-name $ str-spaced style-a-toggler
                             :style $ {}
                             :on-click $ fn (e d!)
+                              hint-fn $ Fn respo.schema/RespoEvent
+                                Fn app.schema/Op $ -> Unit
+                                -> Unit
                               ; d! $ :: :change-model
                               .show model-plugin d!
                               , &unit
@@ -640,20 +612,25 @@
                 .render reply-plugin
                 .render generate-content-plugin
                 .render sessions-plugin
-                if dev? $ comp-typed-reel (>> states :reel) reel $ {}
-                if dev? $ comp-inspect |Store store $ {} (:bottom 10)
+                if dev?
+                  Option :some $ comp-typed-reel (>> states :reel) reel ({}) on-control
+                  Option :none
+                if dev?
+                  Option :some $ comp-inspect |Store store $ {} (:bottom 10)
+                  Option :none
                 .render create-next-chapter-plugin
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
-            :args $ [] $ :: 'reel.typed/State 'app.schema/Op 'app.schema/Store
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn (reel.typed/State app.schema/Op app.schema/Store)
+            Fn reel.typed/Control $ -> Unit
+            -> respo.schema/Component
+            :features :js-ffi
         'comp-message-box $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-message-box (states picker-el on-submit)
             let
                 cursor $ decode-map-as
                   .unwrap-or (get states :cursor) ([])
-                  :: 'List 'Dynamic
-                state $ schema/normalize-message-box-state $ .unwrap-or (get states :data) nil
+                  List respo.schema/CoordKey
+                state $ schema/normalize-message-box-state $ .unwrap-or (get states :data) ({})
                 content $ :content state
                 search? $ :search? state
                 think? $ :think? state
@@ -665,28 +642,22 @@
                     textarea $ {} (:value content) (:placeholder "|Prompt to try LLM...") (:id |message)
                       :class-name $ str-spaced css/textarea css/font-code! style-textbox
                       :on-input $ fn (e d!)
-                        hint-fn $ {}
-                          :args $ [] (:: 'Map 'Tag 'Dynamic)
-                            :: 'Fn $ {}
-                              :args $ [] 'Dynamic
-                              :return 'Unit
-                          :return 'Unit
-                        d! $ :: :states cursor $ assoc state :content (event-text e)
+                        hint-fn $ Fn (Map Tag Dynamic)
+                          Fn app.schema/Op $ -> Unit
+                          -> Unit
+                        d! $ app.schema/Op :states cursor $ assoc state :content (event-text e)
                         , &unit
                       :on-keydown $ fn (e d!)
-                        hint-fn $ {}
-                          :args $ [] (:: 'Map 'Tag 'Dynamic)
-                            :: 'Fn $ {}
-                              :args $ [] 'Dynamic
-                              :return 'Unit
-                          :return 'Unit
+                        hint-fn $ Fn (Map Tag Dynamic)
+                          Fn app.schema/Op $ -> Unit
+                          -> Unit
                         if
                           and
                             = 13 $ event-number e :keycode
                             or (event-flag e :meta?) (event-flag e :ctrl?)
                           on-submit content search? think? d!
                         , &unit
-                    =< nil 4
+                    space-y 4
                     div
                       {} $ :class-name css/row-parted
                       if
@@ -694,13 +665,10 @@
                         span
                           {} (:class-name style-clear)
                             :on-click $ fn (e d!)
-                              hint-fn $ {}
-                                :args $ [] (:: 'Map 'Tag 'Dynamic)
-                                  :: 'Fn $ {}
-                                    :args $ [] 'Dynamic
-                                    :return 'Unit
-                                :return 'Unit
-                              d! $ :: :states cursor $ assoc state :content |
+                              hint-fn $ Fn (Map Tag Dynamic)
+                                Fn app.schema/Op $ -> Unit
+                                -> Unit
+                              d! $ app.schema/Op :states cursor $ assoc state :content |
                               .fold (browser/query-selector |#message)
                                 fn () &unit
                                 fn (target) (browser/element-focus! target)
@@ -714,13 +682,10 @@
                             {}
                               :class-name $ str-spaced css/row style-checkbox
                               :on-click $ fn (e d!)
-                                hint-fn $ {}
-                                  :args $ [] (:: 'Map 'Tag 'Dynamic)
-                                    :: 'Fn $ {}
-                                      :args $ [] 'Dynamic
-                                      :return 'Unit
-                                  :return 'Unit
-                                d! $ :: :states cursor $ assoc state :think? (not think?)
+                                hint-fn $ Fn (Map Tag Dynamic)
+                                  Fn app.schema/Op $ -> Unit
+                                  -> Unit
+                                d! $ app.schema/Op :states cursor $ assoc state :think? (not think?)
                                 , &unit
                             input $ {} (:checked think?) (:type |checkbox)
                             <> |Think css/font-fancy
@@ -728,13 +693,10 @@
                             {}
                               :class-name $ str-spaced css/row style-checkbox
                               :on-click $ fn (e d!)
-                                hint-fn $ {}
-                                  :args $ [] (:: 'Map 'Tag 'Dynamic)
-                                    :: 'Fn $ {}
-                                      :args $ [] 'Dynamic
-                                      :return 'Unit
-                                  :return 'Unit
-                                d! $ :: :states cursor $ assoc state :search? (not search?)
+                                hint-fn $ Fn (Map Tag Dynamic)
+                                  Fn app.schema/Op $ -> Unit
+                                  -> Unit
+                                d! $ app.schema/Op :states cursor $ assoc state :search? (not search?)
                                 , &unit
                             input $ {} (:checked search?) (:type |checkbox)
                             <> |Search css/font-fancy
@@ -742,29 +704,25 @@
                             :class-name $ str-spaced css/button style-submit
                             :inner-text |Submit
                             :on-click $ fn (e d!)
-                              hint-fn $ {}
-                                :args $ [] (:: 'Map 'Tag 'Dynamic)
-                                  :: 'Fn $ {}
-                                    :args $ [] 'Dynamic
-                                    :return 'Unit
-                                :return 'Unit
+                              hint-fn $ Fn (Map Tag Dynamic)
+                                Fn app.schema/Op $ -> Unit
+                                -> Unit
                               ; println $ :content state
                               on-submit content search? think? d!
                               , &unit
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
-            :args $ [] (:: 'Map 'Dynamic 'Dynamic) 'respo.schema/Element $ :: 'Fn
-              {} (:return 'Unit)
-                :args $ [] 'String 'Bool 'Bool $ :: 'Fn
-                  {} (:return 'Unit)
-                    :args $ [] 'Dynamic
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn (Map Dynamic Dynamic) respo.schema/Element
+            Fn String Bool Bool
+              Fn app.schema/Op $ -> Unit
+              -> Unit
+            -> respo.schema/Component
+            :features :js-ffi
         'comp-novel-settings $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-novel-settings (states novel-config)
             let
                 cursor $ decode-map-as
                   .unwrap-or (get states :cursor) ([])
-                  :: 'List 'Dynamic
+                  List respo.schema/CoordKey
                 state $ .fold (get states :data)
                   fn () novel-config
                   fn (value)
@@ -783,13 +741,10 @@
                     :value $ :title state
                     :class-name css/input
                     :on-input $ fn (e d!)
-                      hint-fn $ {}
-                        :args $ [] (:: 'Map 'Tag 'Dynamic)
-                          :: 'Fn $ {}
-                            :args $ [] 'Dynamic
-                            :return 'Unit
-                        :return 'Unit
-                      d! $ :: :states cursor $ assoc state :title (event-text e)
+                      hint-fn $ Fn (Map Tag Dynamic)
+                        Fn app.schema/Op $ -> Unit
+                        -> Unit
+                      d! $ app.schema/Op :states cursor $ assoc state :title (event-text e)
                       , &unit
                 div
                   {} $ :class-name css/column
@@ -801,13 +756,10 @@
                     :class-name $ str-spaced css/textarea style-settings-textarea
                     :placeholder "|Enter your novel's overall settings, world building, character profiles, etc."
                     :on-input $ fn (e d!)
-                      hint-fn $ {}
-                        :args $ [] (:: 'Map 'Tag 'Dynamic)
-                          :: 'Fn $ {}
-                            :args $ [] 'Dynamic
-                            :return 'Unit
-                        :return 'Unit
-                      d! $ :: :states cursor $ assoc state :content (event-text e)
+                      hint-fn $ Fn (Map Tag Dynamic)
+                        Fn app.schema/Op $ -> Unit
+                        -> Unit
+                      d! $ app.schema/Op :states cursor $ assoc state :content (event-text e)
                       , &unit
                 div
                   {} (:class-name css/row-middle)
@@ -815,32 +767,25 @@
                   button
                     {} (:class-name css/button)
                       :on-click $ fn (e d!)
-                        hint-fn $ {}
-                          :args $ [] (:: 'Map 'Tag 'Dynamic)
-                            :: 'Fn $ {}
-                              :args $ [] 'Dynamic
-                              :return 'Unit
-                          :return 'Unit
+                        hint-fn $ Fn (Map Tag Dynamic)
+                          Fn app.schema/Op $ -> Unit
+                          -> Unit
                         println "|[Settings Save] Saving state:" state
-                        d! $ :: :update-novel-config state
-                        d! $ :: :router :home
+                        d! $ app.schema/Op :update-novel-config $ decode-map-as (&struct:to-map state) (Map Tag String)
+                        d! $ app.schema/Op :router :home
                         , &unit
                     <> |Save
                   button
                     {} (:class-name css/button)
                       :on-click $ fn (e d!)
-                        hint-fn $ {}
-                          :args $ [] (:: 'Map 'Tag 'Dynamic)
-                            :: 'Fn $ {}
-                              :args $ [] 'Dynamic
-                              :return 'Unit
-                          :return 'Unit
-                        d! $ :: :router :home
+                        hint-fn $ Fn (Map Tag Dynamic)
+                          Fn app.schema/Op $ -> Unit
+                          -> Unit
+                        d! $ app.schema/Op :router :home
                         , &unit
                     <> |Cancel
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
-            :args $ [] (:: 'Map 'Dynamic 'Dynamic) 'app.schema/NovelConfig
+          :schema $ quote $ Fn (Map Dynamic Dynamic) app.schema/NovelConfig (-> respo.schema/Component)
         'comp-sessions-modal $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-sessions-modal (sessions on-select on-close)
             div
@@ -864,12 +809,9 @@
                           {}
                             :style $ {} (:flex |1) (:cursor :pointer) (:min-width 0) (:overflow :hidden)
                             :on-click $ fn (e d!)
-                              hint-fn $ {}
-                                :args $ [] (:: 'Map 'Tag 'Dynamic)
-                                  :: 'Fn $ {}
-                                    :args $ [] 'Dynamic
-                                    :return 'Unit
-                                :return 'Unit
+                              hint-fn $ Fn (Map Tag Dynamic)
+                                Fn app.schema/Op $ -> Unit
+                                -> Unit
                               on-select session-id d!
                               on-close d!
                               , &unit
@@ -883,28 +825,23 @@
                         div
                           {} (:class-name style-delete-button)
                             :on-click $ fn (e d!)
-                              hint-fn $ {}
-                                :args $ [] (:: 'Map 'Tag 'Dynamic)
-                                  :: 'Fn $ {}
-                                    :args $ [] 'Dynamic
-                                    :return 'Unit
-                                :return 'Unit
-                              browser/event-stop-propagation! $ browser/event-host $ read-field e :event
-                              d! $ :: :remove-session session-id
+                              hint-fn $ Fn (Map Tag Dynamic)
+                                Fn app.schema/Op $ -> Unit
+                                -> Unit
+                              browser/event-stop-propagation! $ browser/event-host $ .unwrap (read-field e :event)
+                              d! $ app.schema/Op :remove-session session-id
                               , &unit
                           <> "|✕"
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
-            :args $ [] (:: 'List 'app.schema/ChatSession)
-              :: 'Fn $ {} (:return 'Unit)
-                :args $ [] 'String $ :: 'Fn
-                  {} (:return 'Unit)
-                    :args $ [] 'Dynamic
-              :: 'Fn $ {} (:return 'Unit)
-                :args $ [] $ :: 'Fn
-                  {} (:return 'Unit)
-                    :args $ [] 'Dynamic
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn (List app.schema/ChatSession)
+            Fn String
+              Fn app.schema/Op $ -> Unit
+              -> Unit
+            Fn
+              Fn app.schema/Op $ -> Unit
+              -> Unit
+            -> respo.schema/Component
+            :features :js-ffi
         'comp-top-bar $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-top-bar ()
             div
@@ -913,20 +850,19 @@
                 {}
                   :class-name $ str-spaced css/row-middle style-logo
                   :on-click $ fn (e d!)
-                    d! $ :: :router :home
+                    d! $ app.schema/Op :router :home
                 comp-i :trello 20 |black
-                =< 8 nil
+                space-x 8
                 div ({}) (<> |Toadflax)
               div
                 {} $ :class-name css/row-middle
                 a
                   {} (:class-name css/link)
                     :on-click $ fn (e d!)
-                      d! $ :: :router :settings
+                      d! $ app.schema/Op :router :settings
                   <> "|Novel Settings"
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
-            :args $ []
+          :schema $ quote $ Fn (-> respo.schema/Component)
         'create-session $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn create-session (messages model)
             let
@@ -941,8 +877,7 @@
                 :timestamp $ shared/date-now-snapshot
                 , :messages messages :model model :preview (&str:slice first-msg 0 end) :is-history? false
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'app.schema/ChatSession)
-            :args $ [] (:: 'List 'app.schema/ChatMessage) 'Tag
+          :schema $ quote $ Fn (List app.schema/ChatMessage) Tag (-> app.schema/ChatSession)
         'effect-focus $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defeffect effect-focus () (action el at?)
             when (= action :mount)
@@ -954,36 +889,47 @@
                     browser/element-select! $ browser/selectable-element-host target
                 , 0
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'respo.schema/Effect)
-            :args $ []
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn (-> respo.schema/Effect) (:features :js-ffi)
+        'encode-tool-neighbor $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defn encode-tool-neighbor (neighbor)
+            match neighbor
+              (:none) nil
+              (:some chapter)
+                {}
+                  :id $ :order-key chapter
+                  :title $ :title chapter
+                  :summary $ :summary chapter
+          :examples $ []
+          :schema $ quote $ Fn (Option app.schema/Chapter)
+            -> $ JsNullish $ Map Tag String
         'event-flag $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn event-flag (event key)
-            let
-                value $ read-field event key
-              if (nil? value) false $ decode-map-as value 'Bool
+            .fold (read-field event key)
+              fn () false
+              fn (value) (decode-map-as value 'Bool)
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Bool)
-            :args $ [] (:: 'Map 'Tag 'Dynamic) 'Tag
+          :schema $ quote $ Fn (Map Tag Dynamic) Tag (-> Bool)
         'event-number $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn event-number (event key)
-            decode-map-as (read-field event key) 'Number
+            decode-map-as
+              .unwrap $ read-field event key
+              , 'Number
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Number)
-            :args $ [] (:: 'Map 'Tag 'Dynamic) 'Tag
+          :schema $ quote $ Fn (Map Tag Dynamic) Tag (-> Number)
         'event-text $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn event-text (event)
-            decode-map-as (read-field event :value) 'String
+            decode-map-as
+              .unwrap $ read-field event :value
+              , 'String
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'String)
-            :args $ [] $ :: 'Map 'Tag 'Dynamic
+          :schema $ quote $ Fn (Map Tag Dynamic) (-> String)
         'extract-interaction-outputs $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn extract-interaction-outputs (interaction)
             let
                 data $ sdk-object-data interaction
                 outputs $ decode-map-as
                   .unwrap-or (get data :outputs) ([])
-                  :: 'List $ :: 'Map 'Tag 'Dynamic
+                  List $ Map Tag Dynamic
                 text-output $ find outputs $ fn (output)
                   =
                     decode-map-as
@@ -1005,7 +951,7 @@
                       , :arguments
                         decode-map-as
                           .unwrap $ get output :arguments
-                          :: 'Map 'Tag 'Dynamic
+                          Map Tag Dynamic
                         , :id $ decode-map-as
                           .unwrap $ get output :id
                           , 'String
@@ -1020,24 +966,20 @@
                   .unwrap $ get data :id
                   , 'String
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'app.schema/InteractionResult)
-            :args $ [] 'Dynamic
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn Dynamic (-> app.schema/InteractionResult) (:features :js-ffi)
         'generate-session-id $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn generate-session-id ()
             str $ :timestamp $ shared/date-now-snapshot
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'String)
-            :args $ []
+          :schema $ quote $ Fn (-> String)
         'get-current-chapter $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn get-current-chapter (chapters selected)
             .fold selected
               fn () $ Option :none
               fn (key) (get chapters key)
           :examples $ []
-          :schema $ :: 'Fn $ {}
-            :args $ [] (:: 'Map 'String 'app.schema/Chapter) (:: 'Option 'String)
-            :return $ :: 'Option 'app.schema/Chapter
+          :schema $ quote $ Fn (Map String app.schema/Chapter) (Option String)
+            -> $ Option app.schema/Chapter
         'get-gemini-key! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn get-gemini-key! ()
             let
@@ -1049,9 +991,7 @@
                     do (browser/storage-set! |gemini-key v) v
                 , key
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'String)
-            :args $ []
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn (-> String) (:features :js-ffi)
         'get-sorted-chapters $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn get-sorted-chapters (chapters)
             map
@@ -1061,9 +1001,8 @@
               fn (key)
                 .unwrap $ get chapters key
           :examples $ []
-          :schema $ :: 'Fn $ {}
-            :args $ [] $ :: 'Map 'String 'app.schema/Chapter
-            :return $ :: 'List 'app.schema/Chapter
+          :schema $ quote $ Fn (Map String app.schema/Chapter)
+            -> $ List app.schema/Chapter
         'handle-chapter-tool-call $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn handle-chapter-tool-call (tool-name raw-args chapters d! novel-config) (println "|Tool call:" tool-name)
             let
@@ -1073,9 +1012,8 @@
                   &set:to-list $ keys chapters0
                   , &compare
                 neighbor-summaries $ fn (chapter-key)
-                  hint-fn $ {}
-                    :args $ [] 'String
-                    :return $ :: 'Map 'Tag 'Dynamic
+                  hint-fn $ Fn String $ ->
+                    Map Tag $ JsNullish $ Map Tag String
                   let
                       idx $ .unwrap-or
                         index-of sorted-keys $ decode-map-as chapter-key 'String
@@ -1095,41 +1033,33 @@
                           fn (key) (get chapters0 key)
                         Option :none
                     {}
-                      :previous $ match previous
-                        (:none) nil
-                        (:some chapter)
-                          {}
-                            :id $ :order-key chapter
-                            :title $ :title chapter
-                            :summary $ :summary chapter
-                      :next $ match next
-                        (:none) nil
-                        (:some chapter)
-                          {}
-                            :id $ :order-key chapter
-                            :title $ :title chapter
-                            :summary $ :summary chapter
+                      :previous $ encode-tool-neighbor previous
+                      :next $ encode-tool-neighbor next
                 title $ decode-map-as
-                  either (read-field args0 :title) |Untitled
+                  .unwrap-or (read-field args0 :title) |Untitled
                   , 'String
                 summary $ decode-map-as
-                  either (read-field args0 :summary) |
+                  .unwrap-or (read-field args0 :summary) |
                   , 'String
                 content0 $ decode-map-as
-                  either (read-field args0 :content) |
+                  .unwrap-or (read-field args0 :content) |
                   , 'String
                 chapter-id $ decode-map-as
-                  either (read-field args0 :chapterId) (read-field args0 :chapter_id) |
+                  .fold (read-field args0 :chapterId)
+                    fn () $ .unwrap-or (read-field args0 :chapter_id) |
+                    fn (present) present
                   , 'String
                 after-id $ decode-map-as
-                  either (read-field args0 :afterChapterId) (read-field args0 :after_chapter_id) |
+                  .fold (read-field args0 :afterChapterId)
+                    fn () $ .unwrap-or (read-field args0 :after_chapter_id) |
+                    fn (present) present
                   , 'String
               println "|[Tool Args] novel-config:" novel-config
               cond
                   = tool-name |pause
                   {} (:ok? true)
                     :message $ decode-map-as
-                      either (read-field args0 :message) "|Pause requested"
+                      .unwrap-or (read-field args0 :message) "|Pause requested"
                       , 'String
                 (= tool-name |list-chapters)
                   {} (:ok? true)
@@ -1150,7 +1080,7 @@
                         .unwrap $ last sorted-keys
                         , max-id
                       new-chapter $ {} (:order-key new-key) (:title title) (:summary summary) (:content |)
-                    d! $ :: :create-chapter-with title summary |
+                    d! $ app.schema/Op :create-chapter-with title summary |
                     {} (:ok? true) (:chapter new-chapter)
                 (= tool-name |create-chapter-after)
                   let
@@ -1167,11 +1097,11 @@
                           .unwrap $ last sorted-keys
                           , max-id
                       new-chapter $ {} (:order-key new-key) (:title title) (:summary summary) (:content |)
-                    d! $ :: :create-chapter-after after-id title summary |
+                    d! $ app.schema/Op :create-chapter-after after-id title summary |
                     {} (:ok? true) (:chapter new-chapter)
                 (= tool-name |update-chapter-content)
                   do
-                    d! $ :: :update-chapter chapter-id $ {} (:content content0)
+                    d! $ app.schema/Op :update-chapter chapter-id $ {} (:content content0)
                     {} $ :ok? true
                 (= tool-name |update-chapter-meta)
                   let
@@ -1179,14 +1109,14 @@
                       summary1 $ read-field args0 :summary
                       updates $ .merge
                         if
-                          not $ nil? title1
-                          {} $ :title $ decode-map-as title1 'String
+                          not $ .none? title1
+                          {} $ :title $ decode-map-as (.unwrap title1) 'String
                           {}
                         if
-                          not $ nil? summary1
-                          {} $ :summary $ decode-map-as summary1 'String
+                          not $ .none? summary1
+                          {} $ :summary $ decode-map-as (.unwrap summary1) 'String
                           {}
-                    d! $ :: :update-chapter chapter-id updates
+                    d! $ app.schema/Op :update-chapter chapter-id updates
                     {} $ :ok? true
                 (= tool-name |get-chapter-with-neighbors)
                   .fold (get chapters0 chapter-id)
@@ -1199,20 +1129,16 @@
                   {} (:ok? true) (:config novel-config)
                 true $ {} (:ok? false) (:error "|Unknown tool")
           :examples $ []
-          :schema $ :: 'Fn $ {}
-            :args $ [] 'String 'Dynamic (:: 'Map 'String 'app.schema/Chapter)
-              :: 'Fn $ {} (:return 'Unit)
-                :args $ [] 'Dynamic
-              , 'app.schema/NovelConfig
-            :features $ #{} :js-ffi
-            :return $ :: 'Map 'Tag 'Dynamic
+          :schema $ quote $ Fn String Dynamic (Map String app.schema/Chapter)
+            Fn app.schema/Op $ -> Unit
+            , app.schema/NovelConfig
+              -> $ Map Tag Dynamic
+              :features :js-ffi
         'json-pattern? $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn json-pattern? (text)
             or (starts-with? text |{) (starts-with? text |[)
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Bool)
-            :args $ [] 'String
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn String (-> Bool) (:features :js-ffi)
         'models-menu $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def models-menu
             [] (:: :item :gemini-flash "|Gemini Flash 3") (:: :item :gemini-pro "|Gemini Pro 3") (:: :item :gemini-flash-lite "|Gemini Flash Lite 2.5")
@@ -1221,44 +1147,41 @@
           :code $ quote $ defn on-fill (cursor state on-submit)
             %{} respo.schema/RespoListener (:name :on-fill)
               :handler $ fn (event dispatch!)
-                hint-fn $ {}
-                  :args $ [] 'Enum $ :: 'Fn
-                    {}
-                      :args $ [] 'Dynamic
-                      :return 'Unit
-                  :return 'Unit
+                hint-fn $ Fn AnyEnum
+                  Fn app.schema/Op $ -> Unit
+                  -> Unit
                 match event $
                   :fill-text info
                   let
-                      text $ decode-map-as (read-field info :text) 'String
+                      text $ decode-map-as
+                        .unwrap $ read-field info :text
+                        , 'String
                       submit? $ decode-map-as
-                        either (read-field info :submit?) true
+                        .unwrap-or (read-field info :submit?) true
                         , 'Bool
                       search? $ :search? state
                       think? $ :think? state
-                    dispatch! $ :: :states cursor $ assoc state :content text
-                    if submit? (on-submit text search? think? dispatch!) nil
+                    dispatch! $ app.schema/Op :states cursor $ assoc state :content text
+                    when submit? $ on-submit text search? think? dispatch!
                 , &unit
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'respo.schema/RespoListener)
-            :args $ [] (:: 'List 'Dynamic) 'app.schema/MessageBoxState $ :: 'Fn
-              {} (:return 'Unit)
-                :args $ [] 'String 'Bool 'Bool $ :: 'Fn
-                  {} (:return 'Unit)
-                    :args $ [] 'Dynamic
+          :schema $ quote $ Fn (List respo.schema/CoordKey) app.schema/MessageBoxState
+            Fn String Bool Bool
+              Fn app.schema/Op $ -> Unit
+              -> Unit
+            -> respo.schema/RespoListener
         'pick-model $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn pick-model (variant)
             match variant (:gemini-pro |gemini-3-pro-preview) (:gemini-flash-lite |gemini-2.5-flash-lite) (_ |gemini-3-flash-preview)
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'String)
-            :args $ [] 'Tag
+          :schema $ quote $ Fn Tag (-> String)
         'run-agent-loop-v2! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn run-agent-loop-v2!
             gen-ai model interaction-id chapters novel-config d! cursor state messages1 *text *thinking-text max-rounds tools
             println "|looping round:" max-rounds |id: interaction-id
             if (<= max-rounds 0)
               do (js/console.warn "|Max rounds reached")
-                d! $ :: :states-merge cursor state $ {} (:loading? false) (:done? true)
+                d! $ app.schema/Op :states-merge cursor state $ {} (:loading? false) (:done? true)
               let
                   prev-interaction-response $ js-await $
                     js-cast (.-interactions gen-ai) 'app.comp.container/GenAiInteractions
@@ -1272,7 +1195,7 @@
                   new-interaction-id $ :interaction-id result
                 if (empty? function-calls)
                   do (println "|No more calls, stopping loop.")
-                    d! $ :: :states-merge cursor state $ {} (:loading? false) (:done? true)
+                    d! $ app.schema/Op :states-merge cursor state $ {} (:loading? false) (:done? true)
                       :answer $ :text result
                       :messages $ upsert-assistant-message messages1 (:text result) (Option :none)
                       :interaction-id new-interaction-id
@@ -1283,7 +1206,7 @@
                       call-id $ :id first-call
                       tool-result $ handle-chapter-tool-call tool-name tool-args chapters d! novel-config
                     if (= tool-name |pause)
-                      d! $ :: :states-merge cursor state $ {} (:loading? false) (:done? true)
+                      d! $ app.schema/Op :states-merge cursor state $ {} (:loading? false) (:done? true)
                       let
                           result-text $ decode-map-as
                             js/JSON.stringify $ to-js-data tool-result
@@ -1297,18 +1220,16 @@
                           followup-result $ extract-interaction-outputs followup-interaction
                           final-text $ :text followup-result
                           final-interaction-id $ :interaction-id followup-result
-                        d! $ :: :states-merge cursor state $ {} (:answer final-text)
+                        d! $ app.schema/Op :states-merge cursor state $ {} (:answer final-text)
                           :messages $ upsert-assistant-message messages1 final-text $ Option :none
                           :interaction-id final-interaction-id
                         js-await $ run-agent-loop-v2! gen-ai model final-interaction-id chapters novel-config d! cursor state messages1 *text *thinking-text (dec max-rounds) tools
+            , &unit
           :examples $ []
-          :schema $ :: 'Fn $ {} (:async true) (:return 'Unit)
-            :args $ [] 'app.comp.container/GenAiClient 'String 'String (:: 'Map 'String 'app.schema/Chapter) 'app.schema/NovelConfig
-              :: 'Fn $ {} (:return 'Unit)
-                :args $ [] 'Dynamic
-              :: 'List 'Dynamic
-              , 'app.schema/ChatState (:: 'List 'app.schema/ChatMessage) (:: 'Ref 'String) (:: 'Ref 'String) 'Number $ :: 'JsNullish 'JsObject
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn app.comp.container/GenAiClient String String (Map String app.schema/Chapter) app.schema/NovelConfig
+            Fn app.schema/Op $ -> Unit
+            List respo.schema/CoordKey
+            , app.schema/ChatState (List app.schema/ChatMessage) (Ref String) (Ref String) Number (JsNullish JsObject) (-> Unit) (:features :js-ffi) (:async)
         'save-current-session $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn save-current-session (store state)
             if
@@ -1319,32 +1240,30 @@
                     , :is-history? true
                 assoc store :sessions $ append (:sessions store) session
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'app.schema/Store)
-            :args $ [] 'app.schema/Store 'app.schema/ChatState
+          :schema $ quote $ Fn app.schema/Store app.schema/ChatState (-> app.schema/Store)
         'sdk-object-data $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn sdk-object-data (raw)
             if (map? raw)
-              decode-map-as raw $ :: 'Map 'Tag 'Dynamic
+              decode-map-as raw $ Map Tag Dynamic
               decode-map-as
                 json-parse $ if (string? raw) raw $ decode-map-as (js/JSON.stringify raw) 'String
-                :: 'Map 'Tag 'Dynamic
+                Map Tag Dynamic
           :examples $ []
-          :schema $ :: 'Fn $ {}
-            :args $ [] 'Dynamic
-            :features $ #{} :js-ffi
-            :return $ :: 'Map 'Tag 'Dynamic
+          :schema $ quote $ Fn Dynamic
+            -> $ Map Tag Dynamic
+            :features :js-ffi
         'style-a-toggler $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-a-toggler
             {}
               |& $ {} (:cursor :pointer) (:background-color :white) (:color :black)
               "|.focus-within &" $ {} $ :color :black
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-abort-close $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-abort-close
             {} $ |& $ {} (:vertical-align :middle) (:font-size 10)
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-app-global $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-app-global
             {}
@@ -1356,7 +1275,7 @@
               |&:hover $ {} (:color |#777)
                 :background-color $ hsl 0 0 100
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-chapter-create $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-chapter-create
             {}
@@ -1367,7 +1286,7 @@
                 :font-size |12px
               |&:hover $ {} $ :background-color (hsl 0 0 96)
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-chapter-delete $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-chapter-delete
             {}
@@ -1377,7 +1296,7 @@
                 :cursor :pointer
               |&:hover $ {} $ :opacity 1
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-chapter-item $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-chapter-item
             {}
@@ -1388,31 +1307,31 @@
                 :position :relative
               |&:hover $ {} $ :background-color (hsl 0 0 96)
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-chapter-item-active $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-chapter-item-active
             {} $ |& $ {}
               :background-color $ hsl 200 80 96
               :border $ str "|1px solid " $ hsl 200 80 80
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-chapter-list $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-chapter-list
             {} $ |& $ {} (:display :flex) (:flex-direction :column) (:gap |8px)
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-chapter-summary $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-chapter-summary
             {} $ |& $ {} (:margin-top |4px) (:font-size |12px)
               :color $ hsl 0 0 50
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-chapter-title $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-chapter-title
             {} $ |& $ {} (:font-size |14px) (:font-weight |600)
               :color $ hsl 0 0 20
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-chat-panel $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-chat-panel
             {} $ |& $ {} (:width |600px)
@@ -1422,17 +1341,17 @@
               :flex-direction :column
               :min-width 0
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-checkbox $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-checkbox
             {} $ |& $ {} (:cursor :pointer) (:user-select :none) (:font-size 12) (:line-height |28px) (:vertical-align :middle)
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-clear $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-clear
             {} $ |& $ {} (:opacity 0.4) (:padding "|4px 8px") (:display :inline-block) (:height |24px)
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-clear-button $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-clear-button
             {}
@@ -1440,12 +1359,12 @@
                 :color $ hsl 0 80 60
               |&:hover $ {} $ :opacity 1
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-code-content $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-code-content
             {} $ |& $ {} (:line-height |1.5) (:font-size 13)
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-delete-button $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-delete-button
             {}
@@ -1460,21 +1379,21 @@
               |&:active $ {} (:opacity 1)
                 :color $ hsl 0 90 40
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-empty-state $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-empty-state
             {} $ |& $ {} (:padding |12px)
               :color $ hsl 0 0 60
               :font-size |13px
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-empty-text $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-empty-text
             {} $ |& $ {}
               :color $ hsl 0 0 65
               :font-style |italic
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-fill $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-fill
             {}
@@ -1485,7 +1404,7 @@
                 :color $ hsl 0 0 40
                 :transform "|scale(1.06)"
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-font-code $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def style-font-code "|Source Code Pro, monospace"
           :examples $ []
@@ -1496,7 +1415,7 @@
           :code $ quote $ defstyle style-gap12
             {} $ |& $ {} (:gap 12)
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-history-button $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-history-button
             {} $ |& $ {} (:font-size |20px)
@@ -1508,7 +1427,7 @@
               :justify-content :center
               |&:hover $ {} $ :color (hsl 200 80 50)
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-history-count $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-history-count
             {} $ |& $ {}
@@ -1516,45 +1435,45 @@
               :font-size |12px
               :display :inline-block
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-logo $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-logo
             {} $ |& $ {} (:font-size 24) (:cursor :pointer) (:font-family style-font-fancy) (:font-weight |600)
               :color $ hsl 200 80 40
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-main-layout $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-main-layout
             {} $ |& $ {} (:display :flex) (:flex |1) (:min-height 0)
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-md-content $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-md-content
             {} $ "|& .md-p" $ {} (:margin "|16px 0") (:line-height |1.6)
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-message-actions $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-message-actions
             {} $ |& $ {} (:margin-top 6) (:justify-content :flex-end) (:width |100%)
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-message-area $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-message-area
             {} $ |& $ {} (:flex 2) (:overflow :scroll)
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-message-assistant $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-message-assistant
             {} $ |& $ {} (:align-self :flex-start)
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-message-box $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-message-box
             {}
               |& $ {} (:width |100%) (:max-width |100%) (:padding |8px) (:margin 0) (:transition-duration |300ms) (:transition-property |height)
               |&:focus-within $ {} $ :opacity 1
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-message-box-panel $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-message-box-panel
             {}
@@ -1563,17 +1482,17 @@
                 :border-top $ str "|1px solid " $ hsl 0 0 90
               |&.focus-within $ {} $ :background-color (hsl 0 0 100)
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-message-item $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-message-item
             {} $ |& $ {} (:line-height |1.6)
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-message-list $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-message-list
             {} $ |& $ {} (:flex 2) (:padding "|40px 24px 20vh 24px") (:width |100%) (:max-width |1400px) (:margin :auto) (:position :relative)
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-message-role $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-message-role
             {} $ |& $ {} (:font-size 12)
@@ -1581,12 +1500,12 @@
               :margin-bottom 6
               :padding-right |16px
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-message-text $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-message-text
             {} $ |& $ {} (:white-space :pre-wrap) (:line-height |1.6) (:margin 0) (:padding-right |16px)
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-message-user $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-message-user
             {}
@@ -1603,7 +1522,7 @@
                 :border-radius |2px
               |&::-webkit-scrollbar-track $ {} $ :background-color :transparent
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-more $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-more
             {}
@@ -1617,18 +1536,18 @@
               |&:hover $ {} $ :box-shadow
                 str "|1px 1px 4px " $ hsl 0 0 0 0.2
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-preview $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-preview
             {} $ |& $ {} (:flex |1) (:min-width 0) (:padding "|16px 20px") (:overflow :auto)
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-preview-content $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-preview-content
             {} $ |& $ {} (:padding "|8px 0")
               :color $ hsl 0 0 20
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-preview-summary $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-preview-summary
             {} $ |& $ {} (:font-size |13px)
@@ -1636,19 +1555,19 @@
               :margin-bottom |12px
               :line-height |1.5
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-preview-title $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-preview-title
             {} $ |& $ {} (:font-size |20px) (:font-weight |600)
               :color $ hsl 0 0 20
               :margin-bottom |8px
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-reply-actions $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-reply-actions
             {} $ |& $ {} (:margin "|8px 12px") (:justify-content :flex-start) (:width |100%)
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-reply-button $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-reply-button
             {}
@@ -1662,7 +1581,7 @@
               |&:hover $ {} $ :box-shadow
                 str "|1px 1px 4px " $ hsl 0 0 0 0.2
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-section-title $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-section-title
             {} $ |& $ {} (:font-size |12px) (:font-weight |600)
@@ -1671,7 +1590,7 @@
               :text-transform |uppercase
               :letter-spacing |0.5px
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-session-item $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-session-item
             {} $ |& $ {} (:padding |12px)
@@ -1682,34 +1601,34 @@
               :gap |12px
               |:hover $ {} $ :background-color (hsl 0 0 96)
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-sessions-list $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-sessions-list
             {} $ |& $ {} (:flex |1) (:overflow-y :auto) (:min-width |300px)
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-settings-label $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-settings-label
             {} $ |& $ {} (:font-size 13)
               :color $ hsl 0 0 60
               :margin-bottom 4
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-settings-page $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-settings-page
             {} $ |& $ {} (:padding 24) (:gap 16) (:max-width 800) (:min-width |80%) (:margin :auto)
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-settings-textarea $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-settings-textarea
             {} $ |& $ {} (:height 400) (:font-family style-font-code)
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-settings-title $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-settings-title
             {} $ |& $ {} (:font-size 20) (:font-weight |600) (:margin-bottom 16)
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-sidebar $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-sidebar
             {} $ |& $ {} (:width |320px)
@@ -1718,25 +1637,25 @@
               :overflow-y :auto
               :padding "|12px 12px"
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-sidebar-header $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-sidebar-header
             {} $ |& $ {} (:padding "|4px 4px 8px 4px") (:font-size 12)
               :color $ hsl 0 0 50
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-submit $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-submit
             {} $ |& $ {}
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-textbox $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-textbox
             {}
               |& $ {} (:border-radius 12) (:height "|max(100px,15vh)") (:width |100%) (:transition-duration |320ms) (:border :none) (:background-color :transparent)
               |&.focus-within $ {} (:height "|max(240px,32vh)") (:border :none) (:box-shadow :none)
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-thinking $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-thinking
             {}
@@ -1750,14 +1669,14 @@
                 :border $ str "|1px solid " $ hsl 0 0 90
               "|& .md-p" $ {} $ :margin "|4px 0"
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-top-bar $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-top-bar
             {} $ |& $ {} (:height |48px) (:padding "|0 16px")
               :border-bottom $ str "|1px solid " $ hsl 0 0 90
               :background-color $ hsl 0 0 98
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'submit-message! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn submit-message!
             cursor chapters novel-config state prompt-text search? think? model d! current-chapter-id tools
@@ -1804,25 +1723,26 @@
                 *text $ ref |
                 *thinking-text $ ref |
                 model0 model
-              d! $ :: :states cursor state1
+              d! $ app.schema/Op :states cursor state1
               try
                 js-await $ call-genai-msg-v2! model0 cursor chapters0 novel-config state1 full-prompt search? think? tools d! *text *thinking-text current-id
                 fn (e)
                   let
                       err-text $ str "|Failed to load: " e
-                    d! $ :: :states cursor $ -> state0
+                    d! $ app.schema/Op :states cursor $ -> state0
                       assoc :answer $ Option :some err-text
                       assoc :loading? false
                       assoc :done? true
                       assoc :messages $ upsert-assistant-message messages0 err-text $ Option :none
+            , &unit
           :examples $ []
-          :schema $ :: 'Fn $ {} (:async true) (:return 'Unit)
-            :args $ [] (:: 'List 'Dynamic) (:: 'Map 'String 'app.schema/Chapter) 'app.schema/NovelConfig 'app.schema/ChatState 'String 'Bool 'Bool 'Tag
-              :: 'Fn $ {} (:return 'Unit)
-                :args $ [] 'Dynamic
-              :: 'Option 'String
-              :: 'JsNullish 'JsObject
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn (List respo.schema/CoordKey) (Map String app.schema/Chapter) app.schema/NovelConfig app.schema/ChatState String Bool Bool Tag
+            Fn app.schema/Op $ -> Unit
+            Option String
+            JsNullish JsObject
+            -> Unit
+            :features :js-ffi
+            :async
         'upsert-assistant-message $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn upsert-assistant-message (messages content thinking)
             let
@@ -1837,16 +1757,15 @@
                     append messages message
                 (:none) (append messages message)
           :examples $ []
-          :schema $ :: 'Fn $ {}
-            :args $ [] (:: 'List 'app.schema/ChatMessage) 'String $ :: 'Option 'String
-            :return $ :: 'List 'app.schema/ChatMessage
+          :schema $ quote $ Fn (List app.schema/ChatMessage) String (Option String)
+            -> $ List app.schema/ChatMessage
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.comp.container
           :require (respo-ui.css :as css)
             respo.css :refer $ defstyle
             respo.util.format :refer $ hsl
             respo.core :refer $ defcomp defeffect <> >> list-> div button textarea span input a pre img
-            respo.comp.space :refer $ =<
+            respo.comp.space :refer $ space-x space-y
             respo.comp.inspect :refer $ comp-inspect
             reel.comp.reel :refer $ comp-typed-reel
             app.config :refer $ dev?
@@ -1867,12 +1786,12 @@
           :code $ quote $ def dev?
             = |dev $ .unwrap-or (get-env |mode) |release
           :examples $ []
-          :schema $ :: 'Bool
+          :schema $ quote Bool
         'site $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def site
             {} $ :storage-key |toadflax
           :examples $ []
-          :schema $ :: 'Map 'Tag 'String
+          :schema $ quote $ Map Tag String
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.config
     'app.main $ %{} 'FileEntry
@@ -1880,21 +1799,20 @@
         '*reel $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defref *reel (schema/new-reel)
           :examples $ []
-          :schema $ :: 'Ref $ :: 'reel.typed/State 'app.schema/Op 'app.schema/Store
+          :schema $ quote $ Ref (reel.typed/State app.schema/Op app.schema/Store)
         'dispatch! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn dispatch! (op)
-            let
-                event $ if (enum? op) op $ raise |Expected-operation-Enum
-                control $ typed/decode-control event
-              reset! *reel $ match control
-                (:some action) (typed/apply-control updater @*reel action)
-                (:none)
-                  typed/record-op updater @*reel (schema/decode-op event) (generate-id!)
-                    :timestamp $ shared/date-now-snapshot
+            reset! *reel $ typed/record-op updater (deref *reel) (schema/decode-op op) (generate-id!)
+              :timestamp $ shared/date-now-snapshot
             , &unit
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Unit)
-            :args $ [] 'Dynamic
+          :schema $ quote $ Fn app.schema/Op (-> Unit)
+        'dispatch-control! $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defn dispatch-control! (control)
+            reset! *reel $ typed/apply-control updater (deref *reel) control
+            , &unit
+          :examples $ []
+          :schema $ quote $ Fn reel.typed/Control (-> Unit)
         'install-input-policy! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn install-input-policy! ()
             browser/add-event-listener! |dblclick $ fn (event) (event .prevent-default!)
@@ -1906,9 +1824,7 @@
               js-object $ :passive false
             , &unit
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Unit)
-            :args $ []
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn (-> Unit) (:features :js-ffi)
         'main! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn main! ()
             println |Running-mode: $ if config/dev? |dev |release
@@ -1916,11 +1832,11 @@
             match
               browser/storage-get $ .unwrap $ get config/site :storage-key
               (:some content)
-                dispatch! $ :: :hydrate-storage $ parse-cirru-edn content
+                dispatch! $ app.schema/Op :hydrate-storage $ schema/data-map (parse-cirru-edn content)
               (:none) &unit
             render-app!
             add-watch! *reel :changes $ fn (reel prev) (render-app!)
-            listen-devtools! |k dispatch!
+            listen-devtools! |k dispatch-control!
             browser/add-event-listener! |beforeunload $ fn (event) (persist-storage!)
             browser/document-add-event-listener! |visibilitychange $ fn (event)
               match (browser/visibility-state)
@@ -1929,25 +1845,21 @@
             install-input-policy!
             println |App-started.
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Unit)
-            :args $ []
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn (-> Unit) (:features :js-ffi)
         'mount-target $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn mount-target ()
             match (dom/query-selector |.app)
               (:some element) element
               (:none) (raise |Missing-app-mount-element)
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'respo.dom/DomElement)
-            :args $ []
+          :schema $ quote $ Fn (-> respo.dom/DomElement)
         'persist-storage! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn persist-storage! ()
             println |Saved-at $ shared/date-local-string $ shared/date-from-ms
               :timestamp $ shared/date-now-snapshot
             browser/storage-set! |toadflax $ format-cirru-edn $ :store @*reel
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Unit)
-            :args $ []
+          :schema $ quote $ Fn (-> Unit)
         'reload! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn reload! ()
             if (js-nullish? build-errors)
@@ -1958,15 +1870,12 @@
               hud! |error build-errors
             , &unit
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Unit)
-            :args $ []
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn (-> Unit) (:features :js-ffi)
         'render-app! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn render-app! ()
-            render! (mount-target) (comp-container @*reel) dispatch!
+            render! (mount-target) (comp-container @*reel dispatch-control!) dispatch!
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Unit)
-            :args $ []
+          :schema $ quote $ Fn (-> Unit)
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.main
           :require
@@ -1986,92 +1895,92 @@
     'app.schema $ %{} 'FileEntry
       :defs $ {}
         'Chapter $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defstruct Chapter (:order-key 'String)
-            :id $ :: 'Option 'String
-            :title 'String
-            :summary 'String
-            :content 'String
+          :code $ quote $ defstruct Chapter (:order-key String)
+            :id $ Option String
+            :title String
+            :summary String
+            :content String
           :examples $ []
-          :schema $ :: 'StructDef
+          :schema $ quote StructDef
         'ChatMessage $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defstruct ChatMessage (:role 'Tag) (:content 'String)
-            :thinking $ :: 'Option 'String
+          :code $ quote $ defstruct ChatMessage (:role Tag) (:content String)
+            :thinking $ Option String
           :examples $ []
-          :schema $ :: 'StructDef
+          :schema $ quote StructDef
         'ChatSession $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defstruct ChatSession (:id 'String) (:created-at 'Number)
-            :messages $ :: 'List 'app.schema/ChatMessage
-            :model 'Tag
-            :preview 'String
-            :is-history? 'Bool
+          :code $ quote $ defstruct ChatSession (:id String) (:created-at Number)
+            :messages $ List app.schema/ChatMessage
+            :model Tag
+            :preview String
+            :is-history? Bool
           :examples $ []
-          :schema $ :: 'StructDef
+          :schema $ quote StructDef
         'ChatState $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstruct ChatState
-            :answer $ :: 'Option 'String
-            :thinking $ :: 'Option 'String
-            :loading? 'Bool
-            :done? 'Bool
-            :messages $ :: 'List 'app.schema/ChatMessage
-            :interaction-id $ :: 'Option 'String
-            :model 'Tag
+            :answer $ Option String
+            :thinking $ Option String
+            :loading? Bool
+            :done? Bool
+            :messages $ List app.schema/ChatMessage
+            :interaction-id $ Option String
+            :model Tag
           :examples $ []
-          :schema $ :: 'StructDef
+          :schema $ quote StructDef
         'InteractionResult $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defstruct InteractionResult (:text 'String)
-            :function-calls $ :: 'List 'app.schema/ToolCall
-            :interaction-id 'String
+          :code $ quote $ defstruct InteractionResult (:text String)
+            :function-calls $ List app.schema/ToolCall
+            :interaction-id String
           :examples $ []
-          :schema $ :: 'StructDef
+          :schema $ quote StructDef
         'MessageBoxState $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defstruct MessageBoxState (:content 'String) (:search? 'Bool) (:think? 'Bool)
+          :code $ quote $ defstruct MessageBoxState (:content String) (:search? Bool) (:think? Bool)
           :examples $ []
-          :schema $ :: 'StructDef
+          :schema $ quote StructDef
         'NovelConfig $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defstruct NovelConfig (:title 'String) (:content 'String)
+          :code $ quote $ defstruct NovelConfig (:title String) (:content String)
           :examples $ []
-          :schema $ :: 'StructDef
+          :schema $ quote StructDef
         'Op $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defenum Op
-            :update-novel-config $ :: 'Map 'Tag 'String
-            :router 'Tag
-            :states (:: 'List 'Dynamic) 'Dynamic
-            :states-merge (:: 'List 'Dynamic) 'app.schema/ChatState $ :: 'Map 'Tag 'Dynamic
-            :hydrate-storage $ :: 'Map 'Tag 'Dynamic
-            :save-session 'app.schema/ChatState
-            :session 'Tag 'String
-            :remove-session 'String
+            :update-novel-config $ Map Tag String
+            :router Tag
+            :states (List respo.schema/CoordKey) Dynamic
+            :states-merge (List respo.schema/CoordKey) app.schema/ChatState $ Map Tag Dynamic
+            :hydrate-storage $ Map Tag Dynamic
+            :save-session app.schema/ChatState
+            :session Tag String
+            :remove-session String
             :create-chapter
-            :create-chapter-with 'String 'String 'String
-            :create-chapter-after 'String 'String 'String 'String
-            :select-chapter 'String
-            :delete-chapter 'String
-            :update-chapter 'String $ :: 'Map 'Tag 'String
+            :create-chapter-with String String String
+            :create-chapter-after String String String String
+            :select-chapter String
+            :delete-chapter String
+            :update-chapter String $ Map Tag String
           :examples $ []
-          :schema $ :: 'EnumDef
+          :schema $ quote EnumDef
         'Store $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstruct Store
-            :states $ :: 'Map 'Dynamic 'Dynamic
-            :sessions $ :: 'List 'app.schema/ChatSession
-            :current-session-id $ :: 'Option 'String
-            :model $ :: 'Option 'Tag
-            :chapters $ :: 'Map 'String 'app.schema/Chapter
-            :current-chapter-id $ :: 'Option 'String
-            :router 'Tag
-            :novel-config 'app.schema/NovelConfig
+            :states $ Map Dynamic Dynamic
+            :sessions $ List app.schema/ChatSession
+            :current-session-id $ Option String
+            :model $ Option Tag
+            :chapters $ Map String app.schema/Chapter
+            :current-chapter-id $ Option String
+            :router Tag
+            :novel-config app.schema/NovelConfig
           :examples $ []
-          :schema $ :: 'StructDef
+          :schema $ quote StructDef
         'ToolCall $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defstruct ToolCall (:name 'String)
-            :arguments $ :: 'Map 'Tag 'Dynamic
-            :id 'String
+          :code $ quote $ defstruct ToolCall (:name String)
+            :arguments $ Map Tag Dynamic
+            :id String
           :examples $ []
-          :schema $ :: 'StructDef
+          :schema $ quote StructDef
         'chat-state $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def chat-state
             ChatState :answer (Option :none) :thinking (Option :none) :loading? false :done? false :messages ([]) :interaction-id (Option :none) :model :gemini
           :examples $ []
-          :schema $ :: 'app.schema/ChatState
+          :schema $ quote app.schema/ChatState
         'data-map $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn data-map (raw)
             decode-map-as
@@ -2080,28 +1989,27 @@
                   , raw
                 (struct? raw) (&struct:to-map raw)
                 true $ raise |Expected-record-map
-              :: 'Map 'Tag 'Dynamic
+              Map Tag Dynamic
           :examples $ []
-          :schema $ :: 'Fn $ {}
-            :args $ [] 'T
-            :generics $ [] 'T
-            :return $ :: 'Map 'Tag 'Dynamic
+          :schema $ quote $ Fn T
+            -> $ Map Tag Dynamic
+            :generics T
         'decode-op $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn decode-op (op)
             match op
               (:update-novel-config value)
-                Op :update-novel-config $ decode-map-as (data-map value) (:: 'Map 'Tag 'String)
+                Op :update-novel-config $ decode-map-as (data-map value) (Map Tag String)
               (:router value)
                 Op :router $ decode-map-as value 'Tag
               (:states cursor value)
                 Op :states
-                  decode-map-as cursor $ :: 'List 'Dynamic
+                  decode-map-as cursor $ List respo.schema/CoordKey
                   , value
               (:states-merge cursor state changes)
                 Op :states-merge
-                  decode-map-as cursor $ :: 'List 'Dynamic
+                  decode-map-as cursor $ List respo.schema/CoordKey
                   normalize-chat-state state
-                  decode-map-as changes $ :: 'Map 'Tag 'Dynamic
+                  decode-map-as changes $ Map Tag Dynamic
               (:hydrate-storage value)
                 Op :hydrate-storage $ data-map value
               (:save-session state)
@@ -2121,26 +2029,24 @@
                 Op :delete-chapter $ decode-map-as id 'String
               (:update-chapter id changes)
                 Op :update-chapter (decode-map-as id 'String)
-                  decode-map-as changes $ :: 'Map 'Tag 'String
+                  decode-map-as changes $ Map Tag String
               _ $ raise "|Unknown application operation"
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'app.schema/Op)
-            :args $ [] 'Enum
+          :schema $ quote $ Fn AnyEnum (-> app.schema/Op)
         'empty-records $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def empty-records ([])
           :examples $ []
-          :schema $ :: 'List $ :: 'reel.typed/Record 'app.schema/Op
+          :schema $ quote $ List (reel.typed/Record app.schema/Op)
         'message-box-state $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def message-box-state (MessageBoxState :content | :search? false :think? false)
           :examples $ []
-          :schema $ :: 'app.schema/MessageBoxState
+          :schema $ quote app.schema/MessageBoxState
         'new-reel $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn new-reel ()
             typed/State :base store :store store :records empty-records :pointer (Option :none) :stopped? false :display? false :merged? false
           :examples $ []
-          :schema $ :: 'Fn $ {}
-            :args $ []
-            :return $ :: 'reel.typed/State 'app.schema/Op 'app.schema/Store
+          :schema $ quote $ Fn
+            -> $ reel.typed/State app.schema/Op app.schema/Store
         'normalize-chapter $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn normalize-chapter (raw key)
             let
@@ -2152,7 +2058,10 @@
                         (:none) false
                       Option :some typed
                       Option :none
-                    _ other $ raise "|Unexpected record kind"
+                    _ other $ if
+                      = :Chapter $ &struct:get-name other
+                      Option :none
+                      raise "|Unexpected record kind"
                   Option :none
               match current
                 (:some typed) typed
@@ -2162,10 +2071,7 @@
                       normalize-optional-field :id $ fn (value) (decode-map-as value 'String)
                     , 'Chapter
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'app.schema/Chapter)
-            :args $ [] 'T 'String
-            :features $ #{} :js-ffi
-            :generics $ [] 'T
+          :schema $ quote $ Fn T String (-> app.schema/Chapter) (:generics T) (:features :js-ffi)
         'normalize-chat-message $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn normalize-chat-message (raw)
             let
@@ -2177,7 +2083,10 @@
                         (:none) false
                       Option :some typed
                       Option :none
-                    _ other $ raise "|Unexpected record kind"
+                    _ other $ if
+                      = :ChatMessage $ &struct:get-name other
+                      Option :none
+                      raise "|Unexpected record kind"
                   Option :none
               match current
                 (:some typed) typed
@@ -2186,10 +2095,7 @@
                     normalize-optional-field (data-map raw) :thinking $ fn (value) (decode-map-as value 'String)
                     , 'ChatMessage
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'app.schema/ChatMessage)
-            :args $ [] 'T
-            :features $ #{} :js-ffi
-            :generics $ [] 'T
+          :schema $ quote $ Fn T (-> app.schema/ChatMessage) (:generics T) (:features :js-ffi)
         'normalize-chat-session $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn normalize-chat-session (raw)
             let
@@ -2201,7 +2107,10 @@
                         (:none) false
                       Option :some typed
                       Option :none
-                    _ other $ raise "|Unexpected record kind"
+                    _ other $ if
+                      = :ChatSession $ &struct:get-name other
+                      Option :none
+                      raise "|Unexpected record kind"
                   Option :none
               match current
                 (:some typed) typed
@@ -2211,17 +2120,14 @@
                       messages $ map
                         decode-map-as
                           .unwrap-or (get data :messages) ([])
-                          :: 'List 'Dynamic
+                          List Dynamic
                         fn (message) (normalize-chat-message message)
                       base $ decode-map-as
                         assoc data :messages $ []
                         , 'ChatSession
                     ChatSession :id (:id base) :created-at (:created-at base) :messages messages :model (:model base) :preview (:preview base) :is-history? $ :is-history? base
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'app.schema/ChatSession)
-            :args $ [] 'T
-            :features $ #{} :js-ffi
-            :generics $ [] 'T
+          :schema $ quote $ Fn T (-> app.schema/ChatSession) (:generics T) (:features :js-ffi)
         'normalize-chat-state $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn normalize-chat-state (raw)
             let
@@ -2233,7 +2139,10 @@
                         (:none) false
                       Option :some typed
                       Option :none
-                    _ other $ raise "|Unexpected record kind"
+                    _ other $ if
+                      = :ChatState $ &struct:get-name other
+                      Option :none
+                      raise "|Unexpected record kind"
                   Option :none
               match current
                 (:some typed) typed
@@ -2244,7 +2153,7 @@
                       messages $ map
                         decode-map-as
                           .unwrap-or (get data :messages) ([])
-                          :: 'List 'Dynamic
+                          List Dynamic
                         fn (message) (normalize-chat-message message)
                       patched $ -> data
                         normalize-optional-field :answer $ fn (value) (decode-map-as value 'String)
@@ -2254,10 +2163,7 @@
                       base $ decode-map-as patched 'ChatState
                     ChatState :answer (:answer base) :thinking (:thinking base) :loading? (:loading? base) :done? (:done? base) :messages messages :interaction-id (:interaction-id base) :model $ :model base
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'app.schema/ChatState)
-            :args $ [] 'T
-            :features $ #{} :js-ffi
-            :generics $ [] 'T
+          :schema $ quote $ Fn T (-> app.schema/ChatState) (:generics T) (:features :js-ffi)
         'normalize-message-box-state $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn normalize-message-box-state (raw)
             let
@@ -2269,7 +2175,10 @@
                         (:none) false
                       Option :some typed
                       Option :none
-                    _ other $ raise "|Unexpected record kind"
+                    _ other $ if
+                      = :MessageBoxState $ &struct:get-name other
+                      Option :none
+                      raise "|Unexpected record kind"
                   Option :none
               match current
                 (:some typed) typed
@@ -2279,10 +2188,7 @@
                       if (nil? raw) ({}) (data-map raw)
                     , 'MessageBoxState
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'app.schema/MessageBoxState)
-            :args $ [] 'T
-            :features $ #{} :js-ffi
-            :generics $ [] 'T
+          :schema $ quote $ Fn T (-> app.schema/MessageBoxState) (:generics T) (:features :js-ffi)
         'normalize-novel-config $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn normalize-novel-config (raw)
             let
@@ -2294,7 +2200,10 @@
                         (:none) false
                       Option :some typed
                       Option :none
-                    _ other $ raise "|Unexpected record kind"
+                    _ other $ if
+                      = :NovelConfig $ &struct:get-name other
+                      Option :none
+                      raise "|Unexpected record kind"
                   Option :none
               match current
                 (:some typed) typed
@@ -2303,10 +2212,7 @@
                     .merge (&struct:to-map novel-config) (data-map raw)
                     , 'NovelConfig
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'app.schema/NovelConfig)
-            :args $ [] 'T
-            :features $ #{} :js-ffi
-            :generics $ [] 'T
+          :schema $ quote $ Fn T (-> app.schema/NovelConfig) (:generics T) (:features :js-ffi)
         'normalize-optional-field $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn normalize-optional-field (data key decode)
             .fold (get data key)
@@ -2323,12 +2229,10 @@
                       _ $ raise |Invalid-optional-field
                   true $ Option :some $ decode raw
           :examples $ []
-          :schema $ :: 'Fn $ {}
-            :args $ [] (:: 'Map 'Tag 'Dynamic) 'Tag $ :: 'Fn
-              {} (:return 'T)
-                :args $ [] 'Dynamic
-            :generics $ [] 'T
-            :return $ :: 'Map 'Tag 'Dynamic
+          :schema $ quote $ Fn (Map Tag Dynamic) Tag
+            Fn Dynamic $ -> T
+            -> $ Map Tag Dynamic
+            :generics T
         'normalize-store $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn normalize-store (raw)
             let
@@ -2340,7 +2244,10 @@
                         (:none) false
                       Option :some typed
                       Option :none
-                    _ other $ raise "|Unexpected record kind"
+                    _ other $ if
+                      = :Store $ &struct:get-name other
+                      Option :none
+                      raise "|Unexpected record kind"
                   Option :none
               match current
                 (:some typed) typed
@@ -2350,12 +2257,12 @@
                       sessions $ map
                         decode-map-as
                           .unwrap-or (get data :sessions) ([])
-                          :: 'List 'Dynamic
+                          List Dynamic
                         fn (session) (normalize-chat-session session)
                       chapters $ filter-map-kv
                         decode-map-as
                           .unwrap-or (get data :chapters) ({})
-                          :: 'Map 'String 'Dynamic
+                          Map String Dynamic
                         fn (key chapter)
                           MapEntryDecision :keep key $ normalize-chapter chapter key
                       config $ .fold (get data :novel-config)
@@ -2371,10 +2278,7 @@
                       base $ decode-map-as patched 'Store
                     Store :states (:states base) :sessions sessions :current-session-id (:current-session-id base) :model (:model base) :chapters chapters :current-chapter-id (:current-chapter-id base) :router (:router base) :novel-config config
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'app.schema/Store)
-            :args $ [] 'T
-            :features $ #{} :js-ffi
-            :generics $ [] 'T
+          :schema $ quote $ Fn T (-> app.schema/Store) (:generics T) (:features :js-ffi)
           :tests $ [] $ %{} 'TestEntry (:name |legacy-map-struct-roundtrip)
             :code $ quote $ let
                 legacy $ {}
@@ -2413,14 +2317,14 @@
         'novel-config $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def novel-config (NovelConfig :title | :content |)
           :examples $ []
-          :schema $ :: 'app.schema/NovelConfig
+          :schema $ quote app.schema/NovelConfig
         'store $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def store
             Store :states
               {} $ :cursor $ []
               , :sessions ([]) :current-session-id (Option :none) :model (Option :none) :chapters ({}) :current-chapter-id (Option :none) :router :home :novel-config novel-config
           :examples $ []
-          :schema $ :: 'app.schema/Store
+          :schema $ quote app.schema/Store
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.schema
           :require $ reel.typed :as typed
@@ -2510,8 +2414,7 @@
                       , key
                   (:none) store
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'app.schema/Store)
-            :args $ [] 'app.schema/Store 'app.schema/Op 'String 'Number
+          :schema $ quote $ Fn app.schema/Store app.schema/Op String Number (-> app.schema/Store)
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater
           :require
