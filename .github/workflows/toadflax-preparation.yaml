@@ -39,6 +39,11 @@ jobs:
           git rev-parse HEAD > "$out/revision.txt"
           calcit --version > "$out/toolchain.txt"
           calcit edit format
+          transaction=.github/toadflax-migration-transaction.json
+          calcit edit transaction --file "$transaction" --dry-run --format json > "$out/transaction-preview.json"
+          revision="$(jq -er '.scoped_revision' "$out/transaction-preview.json")"
+          calcit edit transaction --file "$transaction" --expect-revision "$revision" --format json > "$out/transaction-applied.json"
+          calcit edit format
           cp calcit.cirru "$out/calcit.cirru"
           calcit edit transaction --code '[["edit","format"]]' --dry-run --format json | jq -e '.changed == false'
           calcit query ns --format json > "$out/namespaces.json"
@@ -46,6 +51,16 @@ jobs:
           calcit fix --workflow strict --verify --format json > "$out/strict.json" || true
           calcit analyze weak-types --only schema-dynamic,code-dynamic,deprecated-call --format json > "$out/weak.json" || true
           calcit test app.schema/normalize-store --require-match --format json > "$out/storage-tests.json" || true
+      - name: Check original gates and offline SDK fixtures
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/toadflax"
+          jq -e '.data.status == "passed"' "$out/check.json"
+          jq -e '.data.workflow.status == "passed" and .diagnostics == []' "$out/strict.json"
+          calcit analyze weak-types --only deprecated-call --summary-only --format json | jq -e '.data.summary.calls == 0'
+          calcit test app.schema/normalize-store --require-match
+          VITE_BASE_URL=https://cos-sh.tiye.me/Memkits/toadflax/pr/local/1/1/ yarn build
+          node --test tests/*.test.mjs
       - name: Save reviewed migration inputs
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
