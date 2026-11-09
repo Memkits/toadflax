@@ -7,28 +7,30 @@ import { updater } from "../js-out/app.updater.mjs";
 import { new_reel } from "../js-out/reel.typed.mjs";
 import { make_string } from "../js-out/respo.render.html.mjs";
 import { comp_md_block } from "../js-out/respo-md.comp.md.mjs";
-const t = c.init_tags(["store", "router", "states", "chapters", "current-chapter-id", "title", "summary", "content", "id", "settings", "update-chapter", "delete-chapter", "data", "answer"]);
+const t = c.init_tags(["store", "router", "states", "chapters", "current-chapter-id", "title", "summary", "content", "id", "settings", "update-chapter", "delete-chapter", "data", "answer", "some", "none"]);
 const map = (...pairs) => c._$n__$M_(...pairs.flat());
 const read = (value, key) => c.option_$o_unwrap(c.get(value, t[key] ?? c.init_tags([key])[key]));
 const op = (key, ...args) => decode_op(c._$o__$o_(t[key], ...args));
+const some = (value) => c._PCT__$o__$o_(c.Option, t.some, value);
+const none = () => c._PCT__$o__$o_(c.Option, t.none);
 const chapter = (id) => normalize_chapter(map(t.id, id, t.title, `Title ${id}`, t.summary, "Summary", t.content, "Body"), id);
 
 test("missing and null chapter selection returns none rather than raw nil", () => {
   const chapters = map("T", chapter("T"));
   const restored = normalize_store(map(t["current-chapter-id"], null));
   assert.equal(c.option_$o_unwrap_or(app.get_current_chapter(chapters, read(restored, "current-chapter-id")), null), null);
-  assert.equal(c.option_$o_unwrap_or(app.get_current_chapter(chapters, c._PCT_some("missing")), null), null);
-  assert.equal(c.option_$o_unwrap(read(c.option_$o_unwrap(app.get_current_chapter(chapters, c._PCT_some("T"))), "id")), "T");
+  assert.equal(c.option_$o_unwrap_or(app.get_current_chapter(chapters, some("missing")), null), null);
+  assert.equal(c.option_$o_unwrap(read(c.option_$o_unwrap(app.get_current_chapter(chapters, some("T"))), "id")), "T");
 });
 test("actual initial container renders with a typed Reel and no chapter selected", () => {
   const root = new_reel(store);
-  const html = make_string(app.comp_container(root));
+  const html = make_string(app.comp_container(root, () => {}));
   assert.ok(html.length > 100);
   assert.ok(!html.includes("Loading..."));
 });
 test("selected chapter and real Markdown block output remain renderable", () => {
-  const before = c.assoc(c.assoc(store, t.chapters, map("T", chapter("T"))), t["current-chapter-id"], c._PCT_some("T"));
-  const html = make_string(app.comp_container(new_reel(before)));
+  const before = c.assoc(c.assoc(store, t.chapters, map("T", chapter("T"))), t["current-chapter-id"], some("T"));
+  const html = make_string(app.comp_container(new_reel(before), () => {}));
   assert.ok(html.includes("Title T"));
   assert.ok(html.includes("Body"));
   const messages = app.append_user_message(c._$L_(), "**Fixture** message");
@@ -131,7 +133,7 @@ test("actual async SDK entry accepts an offline client and finishes after loadin
     await app.call_genai_msg_v2_$x_(
       c.init_tags(["gemini"]).gemini, c._$L_(), read(store, "chapters"), read(store, "novel-config"),
       normalize_chat_state(null), "offline prompt", false, false, null,
-      (value) => { updates.push(decode_op(value)); }, c.ref(""), c.ref(""), c._PCT_none(),
+      (value) => { updates.push(decode_op(value)); }, c.ref(""), c.ref(""), none(),
     );
     assert.equal(requests.length, 1);
     assert.equal(typeof requests[0].model, "string");
@@ -169,7 +171,7 @@ test("offline agent tool round preserves the chapter mutation and final answer",
     await app.call_genai_msg_v2_$x_(
       c.init_tags(["gemini"]).gemini, c._$L_(), read(store, "chapters"), read(store, "novel-config"),
       normalize_chat_state(null), "offline tool prompt", false, false, null,
-      (value) => { next = updater(next, decode_op(value), "offline-tool", 0); }, c.ref(""), c.ref(""), c._PCT_none(),
+      (value) => { next = updater(next, decode_op(value), "offline-tool", 0); }, c.ref(""), c.ref(""), none(),
     );
     assert.equal(requests.length, 2);
     assert.equal(requests[1].previous_interaction_id, pending.id);

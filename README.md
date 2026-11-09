@@ -13,9 +13,17 @@ Configurations:
 - `gemini-key` in localStorage
 - 模型由界面选择，当前映射以 `app.comp.container/pick-model` 为准；本轮不更换模型或服务端接口。
 
-### 迁移候选状态
+### Calcit 0.38.0 使用者影响
 
-本分支正在迁移到配对的正式 CLI/procs **0.30.1**；版本声明不等于源码验收或已部署。
+升级后重新安装依赖并构建。旧章节、会话和配置沿用原存档格式与默认值。成功恢复且首次渲染完成后才注册保存。模型、服务地址、请求协议和页面 HUD 沿用原行为。
+
+应用派发使用具名 Op，组件游标使用 Respo 的 CoordKey union，Reel 控制使用独立回调。旧存档的同名记录转成 Map，经字段检查后重建本地类型。工具内部用 Option 表达缺失邻章，SDK 响应继续编码为 JSON null。
+
+官方 Linux 已通过正式依赖、511 个定义、完整 strict、原存档往返、原 11 项离线回归及前端构建。验收使用合成 SDK 数据。
+
+### 0.30.1 历史迁移
+
+此前的迁移使用配对的正式 CLI/procs **0.30.1**；版本声明不等于源码验收或已部署。
 升级需同步完整依赖图、重新生成 JS 并刷新页面。UI 0.8 的基础样式可能变化。
 旧存档会在读取时转换为真实 Struct/Option；保留缺省值和章节排序，
 不要求删除 localStorage。发送入口已修正配置/会话及 dispatch/配置的参数顺序。
@@ -56,10 +64,10 @@ HUD 和请求协议不变。官方 Linux 0.30.1 [准备 CI](https://github.com/M
 
 https://github.com/calcit-lang/respo-calcit-workflow
 
-使用配对的正式 Calcit/procs `0.30.1`，不要混用全局旧 CLI。安装 JS 依赖执行
+使用配对的正式 Calcit/procs `0.38.0`，不要混用全局旧 CLI。安装 JS 依赖执行
 `yarn install --immutable`。Calcit 模块的正式 tag 已声明在 `deps.cirru`；严格 Caps 安装及
 工具链检查已由上述独立准备 CI 验收，不把本地复用模块当作全新安装的证据；最终 PR CI 仍需另行通过。
-本地不执行 Caps（包括只读命令）或编译/检查/codegen/Snapshot mutation；只读 query/tree 视图允许，写入与完整门禁由官方 Linux 0.30.1 CI 执行。Node 24、Yarn 4.18.0、Vite 8.3.3。
+本地不执行 Caps（包括只读命令）或编译/检查/codegen/Snapshot mutation；只读 query/tree 视图允许，写入与完整门禁由官方 Linux 0.38.0 CI 执行。Node 24、Yarn 4.18.0、Vite 8.3.3。
 
 Only `calcit.cirru` and `deps.cirru` are canonical; CI rejects retired
 `compact.cirru` and `package.cirru`. Edit the Snapshot through the installed
@@ -74,7 +82,7 @@ The older `llms/` guides retain historical examples, not current CLI signatures.
 本地通过不等于独立 CI 的依赖解析、构建和上传已通过。
 共享字体、外部图标和原服务器部署路径未改。离线测试不调用 Gemini 或消耗 API 额度。
 
-PR 预览路径包含 PR 编号、运行编号和重试次数，避免覆盖其他运行的资源；生产路径保持不变。上传及公开访问校验仅使用正式 COS Action 1.2.0 内置 verify，不保留重复 CDN 校验测试；各 PR/生产队列保留待运行任务，不取消正在上传的任务。
+PR 预览路径包含 PR 编号、运行编号和重试次数，避免覆盖其他运行的资源；生产路径保持不变。上传及公开访问校验仅使用正式 COS Action 1.3.0 内置 verify，不保留重复 CDN 校验测试；各 PR/生产队列保留待运行任务，不取消正在上传的任务。
 
 本轮包括源码和类型迁移，不只是前端发布配置。模型名称、代理服务 base URL 和原请求协议
 保留；真实服务、取消和多工具链路尚未验收，不应仅凭本地测试触发生产部署。
