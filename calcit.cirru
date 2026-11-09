@@ -519,14 +519,14 @@
                                       not $ blank? thinking
                                       Option :some $ div
                                         {} $ :class-name style-thinking
-                                        memof1-call comp-md-block
+                                        memof1-call-binary comp-md-block
                                           -> thinking $ either |
                                           {} $ :class-name style-md-content
                                       Option :none
                                     if (= role :assistant)
                                       if (json-pattern? content)
                                         pre $ {} (:class-name style-code-content) (:inner-text content)
-                                        memof1-call comp-md-block
+                                        memof1-call-binary comp-md-block
                                           -> content $ either |
                                           {} $ :class-name style-md-content
                                       pre $ {} (:class-name style-message-text) (:inner-text content)
@@ -1771,7 +1771,7 @@
             app.config :refer $ dev?
             respo-md.comp.md :refer $ comp-md-block style-code-block
             respo-ui.comp :refer $ comp-copy comp-close
-            memof.once :refer $ memof1-call memof1-call-by
+            memof.once :refer $ memof1-call-binary memof1-call-by
             |@google/genai :refer $ GoogleGenAI Modality
             feather.core :refer $ comp-i
             respo-alerts.core :refer $ use-modal-menu use-prompt use-drawer

@@ -9,4 +9,4 @@
     |Respo/respo.calcit |0.19.5
     |calcit-lang/bisection-key |0.0.46
     |calcit-lang/js-ffi |0.2.13
-    |calcit-lang/memof |0.0.49
+    |calcit-lang/memof |0.0.50
