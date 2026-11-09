@@ -28,7 +28,7 @@ test("actual initial container renders with a typed Reel and no chapter selected
 });
 test("selected chapter and real Markdown block output remain renderable", () => {
   const before = c.assoc(c.assoc(store, t.chapters, map("T", chapter("T"))), t["current-chapter-id"], c._PCT_some("T"));
-  const html = make_string(app.comp_container(new_reel(before)));
+  const html = make_string(app.comp_container(new_reel(before), () => {}));
   assert.ok(html.includes("Title T"));
   assert.ok(html.includes("Body"));
   const messages = app.append_user_message(c._$L_(), "**Fixture** message");
