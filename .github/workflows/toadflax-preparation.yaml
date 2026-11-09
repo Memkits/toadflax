@@ -1,0 +1,55 @@
+name: Toadflax migration preparation
+
+on:
+  push:
+    branches: [codex/toadflax-0380-preparation]
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6.5.0
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - run: corepack enable && corepack prepare yarn@4.18.0 --activate
+      - uses: calcit-lang/setup-calcit@4a5130ea981278fd4f624f2c2cf64e6776742c01 # v1.5.1
+        with:
+          tools: calcit,caps
+          caps-version: 0.1.1
+          deps-file: deps.cirru
+      - name: Resolve official dependency graph
+        run: |
+          caps --strict --ci
+          yarn install --immutable
+          caps verify --toolchain
+      - name: Prepare canonical source and collect migration diagnostics
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/toadflax"
+          out="$RUNNER_TEMP/toadflax"
+          git rev-parse HEAD > "$out/revision.txt"
+          calcit --version > "$out/toolchain.txt"
+          calcit edit format
+          cp calcit.cirru "$out/calcit.cirru"
+          calcit edit transaction --code '[["edit","format"]]' --dry-run --format json | jq -e '.changed == false'
+          calcit query ns --format json > "$out/namespaces.json"
+          calcit --check-only --all-defs --format json > "$out/check.json" || true
+          calcit fix --workflow strict --verify --format json > "$out/strict.json" || true
+          calcit analyze weak-types --only schema-dynamic,code-dynamic,deprecated-call --format json > "$out/weak.json" || true
+          calcit test app.schema/normalize-store --require-match --format json > "$out/storage-tests.json" || true
+      - name: Save reviewed migration inputs
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: toadflax-preparation
+          path: ${{ runner.temp }}/toadflax
+          if-no-files-found: ignore
+          retention-days: 3
