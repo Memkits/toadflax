@@ -1,0 +1,34 @@
+[
+  [
+    "edit",
+    "add-import",
+    "--overwrite",
+    "app.comp.container",
+    "--input-format",
+    "cirru",
+    "--code",
+    "quote $ memof.once :refer $ memof1-call-binary memof1-call-by"
+  ],
+  [
+    "tree",
+    "replace",
+    "app.comp.container/comp-container",
+    "--path",
+    "@3.2.3.3.2.4.2.3.2.2.2.1.2.2.2.3.2.2.2.0",
+    "--input-format",
+    "cirru",
+    "--code",
+    "quote memof1-call-binary"
+  ],
+  [
+    "tree",
+    "replace",
+    "app.comp.container/comp-container",
+    "--path",
+    "@3.2.3.3.2.4.2.3.2.2.2.1.2.2.2.4.2.3.0",
+    "--input-format",
+    "cirru",
+    "--code",
+    "quote memof1-call-binary"
+  ]
+]
