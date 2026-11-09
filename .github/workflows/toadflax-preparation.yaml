@@ -25,6 +25,7 @@ jobs:
           tools: calcit,caps
           caps-version: 0.1.1
           deps-file: deps.cirru
+          github-token: ${{ github.token }}
       - name: Resolve official dependency graph
         run: |
           caps --strict --ci
