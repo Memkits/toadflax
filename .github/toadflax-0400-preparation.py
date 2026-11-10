@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from sys import argv
 
@@ -12,12 +13,10 @@ assert "(:states cursor value)" in definition
 updated = definition.replace(schema, schema.rstrip() + " (:open :decode)\n")
 (output / "app-schema.after.cirru").write_text(source[:start] + updated + source[end:])
 
-import json
-
 container = (output / "container.before.cirru").read_text()
 previous = "      :schema $ quote $ Fn (Map Dynamic Dynamic) app.schema/NovelConfig (-> respo.schema/Component)\n"
 assert container.count(previous) == 1
-container = container.replace(previous, previous.replace("Map Dynamic Dynamic", "Map Tag Dynamic"))
+container = container.replace(previous, previous.replace("(Map Dynamic Dynamic)", "respo.schema/States"))
 for name, value in (
     ("style-font-code", "Source Code Pro, monospace"),
     ("style-font-fancy", "Georgia, serif"),
