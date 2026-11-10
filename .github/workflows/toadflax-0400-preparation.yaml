@@ -42,10 +42,12 @@ jobs:
           calcit edit ns --help > "$out/edit-help.txt"
           calcit query usages -- app.schema/decode-op > "$out/decode-op-usages.txt"
           calcit query ns --format cirru -- app.schema > "$out/app-schema.before.cirru"
+          calcit query usages -- app.comp.container/comp-novel-settings > "$out/novel-settings-usages.txt"
+          calcit query ns --format cirru -- app.comp.container > "$out/container.before.cirru"
           python3 .github/toadflax-0400-preparation.py "$out"
-          calcit edit ns --file "$out/app-schema.after.cirru" --dry-run --format json -- app.schema > "$out/preview.json"
+          calcit edit transaction --file "$out/transaction.json" --dry-run --format json > "$out/preview.json"
           revision="$(jq -er '.scoped_revision' "$out/preview.json")"
-          calcit edit ns --file "$out/app-schema.after.cirru" --expect-revision "$revision" --format json -- app.schema > "$out/applied.json"
+          calcit edit transaction --file "$out/transaction.json" --expect-revision "$revision" --format json > "$out/applied.json"
           calcit edit transaction --code '[["edit","format"]]' --dry-run --format json | jq -e '.changed == false'
           git diff --check
           git diff --text -- calcit.cirru > "$out/source.diff"
