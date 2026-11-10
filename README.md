@@ -13,11 +13,11 @@ Configurations:
 - `gemini-key` in localStorage
 - 模型由界面选择，当前映射以 `app.comp.container/pick-model` 为准；本轮不更换模型或服务端接口。
 
-### Calcit 0.38.0 使用者影响
+### Calcit 0.40.0 使用者影响
 
 升级后重新安装依赖并构建。旧章节、会话和配置沿用原存档格式与默认值。成功恢复且首次渲染完成后才注册保存。模型、服务地址、请求协议和页面 HUD 沿用原行为。
 
-应用派发使用具名 Op，组件游标使用 Respo 的 CoordKey union，Reel 控制使用独立回调。旧存档的同名记录转成 Map，经字段检查后重建本地类型。工具内部用 Option 表达缺失邻章，SDK 响应继续编码为 JSON null。
+应用派发使用具名 Op，操作解码器负责核对组件边界传入的枚举，组件游标使用 Respo 的 CoordKey union，Reel 控制使用独立回调。旧存档的同名记录转成 Map，经字段检查后重建本地类型。工具内部用 Option 表达缺失邻章，SDK 响应继续编码为 JSON null。
 
 官方 Linux 已通过正式依赖、511 个定义、完整 strict、原存档往返、原 11 项离线回归及前端构建。验收使用合成 SDK 数据。
 
@@ -64,10 +64,10 @@ HUD 和请求协议不变。官方 Linux 0.30.1 [准备 CI](https://github.com/M
 
 https://github.com/calcit-lang/respo-calcit-workflow
 
-使用配对的正式 Calcit/procs `0.38.0`，不要混用全局旧 CLI。安装 JS 依赖执行
+使用配对的正式 Calcit/procs `0.40.0`，不要混用全局旧 CLI。安装 JS 依赖执行
 `yarn install --immutable`。Calcit 模块的正式 tag 已声明在 `deps.cirru`；严格 Caps 安装及
 工具链检查已由上述独立准备 CI 验收，不把本地复用模块当作全新安装的证据；最终 PR CI 仍需另行通过。
-本地不执行 Caps（包括只读命令）或编译/检查/codegen/Snapshot mutation；只读 query/tree 视图允许，写入与完整门禁由官方 Linux 0.38.0 CI 执行。Node 24、Yarn 4.18.0、Vite 8.3.3。
+本地不执行 Caps（包括只读命令）或编译/检查/codegen/Snapshot mutation；只读 query/tree 视图允许，写入与完整门禁由官方 Linux 0.40.0 CI 执行。Node 24、Yarn 4.18.0、Vite 8.3.3。
 
 Only `calcit.cirru` and `deps.cirru` are canonical; CI rejects retired
 `compact.cirru` and `package.cirru`. Edit the Snapshot through the installed

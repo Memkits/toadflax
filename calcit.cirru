@@ -785,7 +785,7 @@
                         , &unit
                     <> |Cancel
           :examples $ []
-          :schema $ quote $ Fn (Map Dynamic Dynamic) app.schema/NovelConfig (-> respo.schema/Component)
+          :schema $ quote $ Fn respo.schema/States app.schema/NovelConfig (-> respo.schema/Component)
         'comp-sessions-modal $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-sessions-modal (sessions on-select on-close)
             div
@@ -1408,9 +1408,11 @@
         'style-font-code $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def style-font-code "|Source Code Pro, monospace"
           :examples $ []
+          :schema $ quote String
         'style-font-fancy $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def style-font-fancy "|Georgia, serif"
           :examples $ []
+          :schema $ quote String
         'style-gap12 $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-gap12
             {} $ |& $ {} (:gap 12)
@@ -2032,7 +2034,7 @@
                   decode-map-as changes $ Map Tag String
               _ $ raise "|Unknown application operation"
           :examples $ []
-          :schema $ quote $ Fn AnyEnum (-> app.schema/Op)
+          :schema $ quote $ Fn AnyEnum (-> app.schema/Op) (:open :decode)
         'empty-records $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def empty-records ([])
           :examples $ []
