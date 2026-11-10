@@ -1,0 +1,76 @@
+name: Prepare Toadflax Calcit 0.40.0
+
+on:
+  push:
+    branches: [codex/toadflax-0400-preparation]
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6.5.0
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - run: corepack enable && corepack prepare yarn@4.18.0 --activate
+      - uses: calcit-lang/setup-calcit@4a5130ea981278fd4f624f2c2cf64e6776742c01 # v1.5.1
+        with:
+          tools: calcit,caps
+          caps-version: 0.1.1
+          deps-file: deps.cirru
+          github-token: ${{ github.token }}
+      - name: Resolve official dependencies
+        run: |
+          caps --strict --ci
+          yarn install --immutable
+          caps verify --toolchain
+      - name: Apply reviewed Calcit transaction
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/toadflax-0400"
+          mkdir -p "$out"
+          git rev-parse HEAD > "$out/revision.txt"
+          calcit -v > "$out/toolchain.txt"
+          calcit docs agents --contract > "$out/agent-contract.txt"
+          calcit edit ns --help > "$out/edit-help.txt"
+          calcit query usages -- app.schema/decode-op > "$out/decode-op-usages.txt"
+          calcit query ns --format cirru -- app.schema > "$out/app-schema.before.cirru"
+          python3 .github/toadflax-0400-preparation.py "$out"
+          calcit edit ns --file "$out/app-schema.after.cirru" --dry-run --format json -- app.schema > "$out/preview.json"
+          revision="$(jq -er '.scoped_revision' "$out/preview.json")"
+          calcit edit ns --file "$out/app-schema.after.cirru" --expect-revision "$revision" --format json -- app.schema > "$out/applied.json"
+          calcit edit transaction --code '[["edit","format"]]' --dry-run --format json | jq -e '.changed == false'
+          git diff --check
+          git diff --text -- calcit.cirru > "$out/source.diff"
+      - name: Run original gates and offline tests
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/toadflax-0400"
+          test ! -e compact.cirru
+          test ! -e package.cirru
+          calcit --check-only --all-defs --format json > "$out/check.json"
+          jq -e '.data.status == "passed"' "$out/check.json"
+          calcit fix --workflow strict --verify --format json > "$out/strict.json"
+          jq -e '.data.workflow.status == "passed" and .diagnostics == []' "$out/strict.json"
+          calcit analyze weak-types --only coverage --summary-only --format json
+          calcit analyze weak-types --only schema-dynamic,code-dynamic --intent unresolved --format json > "$out/unresolved.json"
+          calcit analyze weak-types --only deprecated-call --summary-only --format json | jq -e '.data.summary.calls == 0'
+          calcit test app.schema/normalize-store --require-match
+          VITE_BASE_URL=https://cos-sh.tiye.me/Memkits/toadflax/pr/local/1/1/ yarn build
+          node --test tests/*.test.mjs
+          cp calcit.cirru "$out/calcit.cirru"
+      - name: Save validated source
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: toadflax-0400-preparation
+          path: ${{ runner.temp }}/toadflax-0400
+          if-no-files-found: ignore
+          retention-days: 3
