@@ -13,11 +13,15 @@
         '*abort-control $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defref *abort-control nil
           :examples $ []
-          :schema $ quote $ Ref (JsNullish js-ffi.shared/AbortControllerHost)
+          :schema $ quote $ Ref (JsNullish shared/AbortControllerHost)
         '*gen-ai-new $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defref *gen-ai-new nil
           :examples $ []
           :schema $ quote $ Ref (JsNullish JsObject)
+        'ChapterToolValue $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defunion ChapterToolValue Bool String app.schema/Chapter app.schema/NovelConfig (Map Tag String)
+            List $ Map Tag String
+          :examples $ []
         'GenAiClient $ %{} 'CodeEntry (:doc |)
           :code $ quote $ deftrait GenAiClient (:interactions 'GenAiInteractions)
           :examples $ []
@@ -32,10 +36,10 @@
           :schema $ quote Trait
         'append-user-message $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn append-user-message (messages content)
-            append messages $ schema/ChatMessage :role :user :content content :thinking $ Option :none
+            append messages $ schema/ChatMessage :role :user :content content :thinking None
           :examples $ []
-          :schema $ quote $ Fn (List app.schema/ChatMessage) String
-            -> $ List app.schema/ChatMessage
+          :schema $ quote $ Fn (List schema/ChatMessage) String
+            -> $ List schema/ChatMessage
         'build-function-result-input $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn build-function-result-input (tool-name call-id result-text)
             js-array $ js-object (:type |function_result) (:name tool-name) (:call_id call-id) (:result result-text)
@@ -69,7 +73,7 @@
                     , to-js-data
                 :tools $ if (js-present? tools-list) tools-list js/undefined
           :examples $ []
-          :schema $ quote $ Fn String String (List app.schema/ChatMessage) (Option String) (JsNullish JsObject) (Map String app.schema/Chapter) (Option String) (-> JsObject) (:features :js-ffi)
+          :schema $ quote $ Fn String String (List schema/ChatMessage) (Option String) (JsNullish JsObject) (Map String schema/Chapter) (Option String) (-> JsObject) (:features :js-ffi)
         'call-genai-msg-v2! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn call-genai-msg-v2!
             variant cursor chapters novel-config state prompt-text search? think? tools d! *text *thinking-text current-chapter-id
@@ -88,7 +92,7 @@
                 model $ pick-model variant
                 content prompt-text
                 messages0 $ :messages state
-                messages1 $ upsert-assistant-message messages0 | $ Option :none
+                messages1 $ upsert-assistant-message messages0 | None
                 _ $ println "|[→ LLM] Sending" (.len messages1) |messages
                 tools-list tools
                 prev-interaction-id $ :interaction-id state
@@ -109,12 +113,12 @@
                   not $ empty? function-calls
                   js-await $ run-agent-loop-v2! gen-ai model new-interaction-id chapters novel-config d! cursor state messages1 *text *thinking-text 10 tools-list
                   d! $ app.schema/Op :states-merge cursor state $ {} (:answer answer-text) (:thinking nil) (:loading? false) (:done? true)
-                    :messages $ upsert-assistant-message messages1 answer-text $ Option :none
+                    :messages $ upsert-assistant-message messages1 answer-text None
                     :interaction-id new-interaction-id
             , &unit
           :examples $ []
-          :schema $ quote $ Fn Tag (List respo.schema/CoordKey) (Map String app.schema/Chapter) app.schema/NovelConfig app.schema/ChatState String Bool Bool (JsNullish JsObject)
-            Fn app.schema/Op $ -> Unit
+          :schema $ quote $ Fn Tag (List respo.schema/CoordKey) (Map String schema/Chapter) schema/NovelConfig schema/ChatState String Bool Bool (JsNullish JsObject)
+            Fn schema/Op $ -> Unit
             Ref String
             Ref String
             Option String
@@ -224,8 +228,7 @@
                 <> $ :title chapter
               if
                 blank? $ :summary chapter
-                Option :none
-                Option :some $ div
+                , None $ Some $ div
                   {} $ :class-name style-chapter-summary
                   <> $ :summary chapter
               span
@@ -239,12 +242,12 @@
                     , &unit
                 <> "|✕"
           :examples $ []
-          :schema $ quote $ Fn app.schema/Chapter Bool
+          :schema $ quote $ Fn schema/Chapter Bool
             Fn String
-              Fn app.schema/Op $ -> Unit
+              Fn schema/Op $ -> Unit
               -> Unit
             Fn String
-              Fn app.schema/Op $ -> Unit
+              Fn schema/Op $ -> Unit
               -> Unit
             -> respo.schema/Component
             :features :js-ffi
@@ -276,7 +279,7 @@
                   , "|(空)" $ :content chapter
               if
                 blank? $ :content chapter
-                Option :some $ div
+                Some $ div
                   {} $ :class-name $ str-spaced css/row-middle css/gap8
                   button
                     {}
@@ -288,11 +291,11 @@
                         on-generate d!
                         , &unit
                     <> "|生成正文"
-                Option :none
+                , None
           :examples $ []
-          :schema $ quote $ Fn app.schema/Chapter
+          :schema $ quote $ Fn schema/Chapter
             Fn
-              Fn app.schema/Op $ -> Unit
+              Fn schema/Op $ -> Unit
               -> Unit
             -> respo.schema/Component
         'comp-chapter-sidebar $ %{} 'CodeEntry (:doc |)
@@ -341,18 +344,18 @@
                 div $ {} $ :style
                   {} $ :height |200px
           :examples $ []
-          :schema $ quote $ Fn (Map String app.schema/Chapter) (Option String)
+          :schema $ quote $ Fn (Map String schema/Chapter) (Option String)
             Fn String
-              Fn app.schema/Op $ -> Unit
+              Fn schema/Op $ -> Unit
               -> Unit
             Fn
-              Fn app.schema/Op $ -> Unit
+              Fn schema/Op $ -> Unit
               -> Unit
             Fn String
-              Fn app.schema/Op $ -> Unit
+              Fn schema/Op $ -> Unit
               -> Unit
             Fn
-              Fn app.schema/Op $ -> Unit
+              Fn schema/Op $ -> Unit
               -> Unit
             -> respo.schema/Component
         'comp-container $ %{} 'CodeEntry (:doc |)
@@ -419,7 +422,7 @@
                           d! $ app.schema/Op :states cursor $ -> state
                             assoc :messages $ .fold
                               find sessions $ fn (s)
-                                = (:id s) (assert-type session-id 'String)
+                                = (:id s) (assert-type session-id String)
                               fn () $ []
                               fn (session) (:messages session)
                             assoc :done? true
@@ -496,10 +499,10 @@
                               space-x 4
                               if
                                 > (.len sessions) 0
-                                Option :some $ <>
+                                Some $ <>
                                   str $ .len sessions
                                   str-spaced css/font-fancy style-history-count
-                                Option :none
+                                , None
                           div
                             {} $ :class-name $ str-spaced css/column style-message-list
                             list->
@@ -517,12 +520,12 @@
                                       <> $ if (= role :assistant) |Assistant |You
                                     if
                                       not $ blank? thinking
-                                      Option :some $ div
+                                      Some $ div
                                         {} $ :class-name style-thinking
                                         memof1-call-binary comp-md-block
                                           -> thinking $ either |
                                           {} $ :class-name style-md-content
-                                      Option :none
+                                      , None
                                     if (= role :assistant)
                                       if (json-pattern? content)
                                         pre $ {} (:class-name style-code-content) (:inner-text content)
@@ -533,10 +536,10 @@
                                     if
                                       and (= role :assistant)
                                         or done? $ not= idx $ dec (.len messages)
-                                      Option :some $ div
+                                      Some $ div
                                         {} $ :class-name $ str-spaced css/row-middle css/gap8 style-message-actions
                                         , nil $ comp-copy (either content |)
-                                      Option :none
+                                      , None
                             ; if
                               and
                                 > (count messages) 0
@@ -559,19 +562,19 @@
                               div
                                 {} $ :class-name $ str-spaced css/row-middle css/gap8
                                 if (:loading? state)
-                                  Option :some $ div
+                                  Some $ div
                                     {} $ :style $ {} (:display :flex) (:justify-content :center) (:align-items :center) (:margin |8px)
                                     memof1-call-by :abort-streaming comp-abort |Loading...
-                                  Option :none
+                                  , None
                               if done?
-                                Option :some $ div $ {}
+                                Some $ div $ {}
                                   :class-name $ str-spaced css/row-middle css/gap8
-                                Option :none
+                                , None
                             if
                               and
                                 > (.len messages) 0
                                 not is-viewing-history?
-                              Option :some $ div
+                              Some $ div
                                 {}
                                   :class-name $ str-spaced css/row
                                   :style $ {} (:padding "|8px 0") (:margin-top |48px) (:justify-content :flex-end)
@@ -585,7 +588,7 @@
                                       d! $ app.schema/Op :states-merge cursor state $ {}
                                         :messages $ []
                                   <> |Clear
-                              Option :none
+                              , None
                         comp-message-box (>> states :message-box)
                           a $ {}
                             :inner-text $ or (to-string model) |-
@@ -600,10 +603,7 @@
                               , &unit
                           fn (text search? think? d!)
                             submit-message! cursor chapters novel-config
-                              -> state
-                                assoc :answer $ Option :none
-                                assoc :thinking $ Option :none
-                                assoc :done? false
+                              -> state (assoc :answer None) (assoc :thinking None) (assoc :done? false)
                               , text search? think? model d! current-chapter-id nil
                             , &unit
                     div ({})
@@ -613,14 +613,14 @@
                 .render generate-content-plugin
                 .render sessions-plugin
                 if dev?
-                  Option :some $ comp-typed-reel (>> states :reel) reel ({}) on-control
-                  Option :none
+                  Some $ comp-typed-reel (>> states :reel) reel ({}) on-control
+                  , None
                 if dev?
-                  Option :some $ comp-inspect |Store store $ {} (:bottom 10)
-                  Option :none
+                  Some $ comp-inspect |Store store $ {} (:bottom 10)
+                  , None
                 .render create-next-chapter-plugin
           :examples $ []
-          :schema $ quote $ Fn (reel.typed/State app.schema/Op app.schema/Store)
+          :schema $ quote $ Fn (reel.typed/State schema/Op schema/Store)
             Fn reel.typed/Control $ -> Unit
             -> respo.schema/Component
             :features :js-ffi
@@ -711,9 +711,9 @@
                               on-submit content search? think? d!
                               , &unit
           :examples $ []
-          :schema $ quote $ Fn (Map Dynamic Dynamic) respo.schema/Element
+          :schema $ quote $ Fn respo.schema/States respo.schema/Element
             Fn String Bool Bool
-              Fn app.schema/Op $ -> Unit
+              Fn schema/Op $ -> Unit
               -> Unit
             -> respo.schema/Component
             :features :js-ffi
@@ -785,7 +785,7 @@
                         , &unit
                     <> |Cancel
           :examples $ []
-          :schema $ quote $ Fn respo.schema/States app.schema/NovelConfig (-> respo.schema/Component)
+          :schema $ quote $ Fn respo.schema/States schema/NovelConfig (-> respo.schema/Component)
         'comp-sessions-modal $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-sessions-modal (sessions on-select on-close)
             div
@@ -833,12 +833,12 @@
                               , &unit
                           <> "|✕"
           :examples $ []
-          :schema $ quote $ Fn (List app.schema/ChatSession)
+          :schema $ quote $ Fn (List schema/ChatSession)
             Fn String
-              Fn app.schema/Op $ -> Unit
+              Fn schema/Op $ -> Unit
               -> Unit
             Fn
-              Fn app.schema/Op $ -> Unit
+              Fn schema/Op $ -> Unit
               -> Unit
             -> respo.schema/Component
             :features :js-ffi
@@ -877,7 +877,7 @@
                 :timestamp $ shared/date-now-snapshot
                 , :messages messages :model model :preview (&str:slice first-msg 0 end) :is-history? false
           :examples $ []
-          :schema $ quote $ Fn (List app.schema/ChatMessage) Tag (-> app.schema/ChatSession)
+          :schema $ quote $ Fn (List schema/ChatMessage) Tag (-> schema/ChatSession)
         'effect-focus $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defeffect effect-focus () (action el at?)
             when (= action :mount)
@@ -890,6 +890,10 @@
                 , 0
           :examples $ []
           :schema $ quote $ Fn (-> respo.schema/Effect) (:features :js-ffi)
+        'empty-chapter-tool-result $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ def empty-chapter-tool-result ({})
+          :examples $ []
+          :schema $ quote $ Map Tag (JsNullish ChapterToolValue)
         'encode-tool-neighbor $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn encode-tool-neighbor (neighbor)
             match neighbor
@@ -900,7 +904,7 @@
                   :title $ :title chapter
                   :summary $ :summary chapter
           :examples $ []
-          :schema $ quote $ Fn (Option app.schema/Chapter)
+          :schema $ quote $ Fn (Option schema/Chapter)
             -> $ JsNullish $ Map Tag String
         'event-flag $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn event-flag (event key)
@@ -966,7 +970,7 @@
                   .unwrap $ get data :id
                   , 'String
           :examples $ []
-          :schema $ quote $ Fn Dynamic (-> app.schema/InteractionResult) (:features :js-ffi)
+          :schema $ quote $ Fn Dynamic (-> schema/InteractionResult) (:features :js-ffi)
         'generate-session-id $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn generate-session-id ()
             str $ :timestamp $ shared/date-now-snapshot
@@ -975,11 +979,11 @@
         'get-current-chapter $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn get-current-chapter (chapters selected)
             .fold selected
-              fn () $ Option :none
+              fn () None
               fn (key) (get chapters key)
           :examples $ []
-          :schema $ quote $ Fn (Map String app.schema/Chapter) (Option String)
-            -> $ Option app.schema/Chapter
+          :schema $ quote $ Fn (Map String schema/Chapter) (Option String)
+            -> $ Option schema/Chapter
         'get-gemini-key! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn get-gemini-key! ()
             let
@@ -1001,8 +1005,8 @@
               fn (key)
                 .unwrap $ get chapters key
           :examples $ []
-          :schema $ quote $ Fn (Map String app.schema/Chapter)
-            -> $ List app.schema/Chapter
+          :schema $ quote $ Fn (Map String schema/Chapter)
+            -> $ List schema/Chapter
         'handle-chapter-tool-call $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn handle-chapter-tool-call (tool-name raw-args chapters d! novel-config) (println "|Tool call:" tool-name)
             let
@@ -1013,7 +1017,7 @@
                   , &compare
                 neighbor-summaries $ fn (chapter-key)
                   hint-fn $ Fn String $ ->
-                    Map Tag $ JsNullish $ Map Tag String
+                    Map Tag $ JsNullish ChapterToolValue
                   let
                       idx $ .unwrap-or
                         index-of sorted-keys $ decode-map-as chapter-key 'String
@@ -1021,20 +1025,20 @@
                       previous $ if (> idx 0)
                         .fold
                           get sorted-keys $ dec idx
-                          fn () $ Option :none
+                          fn () None
                           fn (key) (get chapters0 key)
-                        Option :none
+                        , None
                       next $ if
                         and (>= idx 0)
                           < idx $ dec $ .len sorted-keys
                         .fold
                           get sorted-keys $ inc idx
-                          fn () $ Option :none
+                          fn () None
                           fn (key) (get chapters0 key)
-                        Option :none
-                    {}
-                      :previous $ encode-tool-neighbor previous
-                      :next $ encode-tool-neighbor next
+                        , None
+                    .assoc
+                      .assoc empty-chapter-tool-result :previous $ encode-tool-neighbor previous
+                      , :next $ encode-tool-neighbor next
                 title $ decode-map-as
                   .unwrap-or (read-field args0 :title) |Untitled
                   , 'String
@@ -1057,23 +1061,21 @@
               println "|[Tool Args] novel-config:" novel-config
               cond
                   = tool-name |pause
-                  {} (:ok? true)
-                    :message $ decode-map-as
-                      .unwrap-or (read-field args0 :message) "|Pause requested"
-                      , 'String
+                  .assoc (.assoc empty-chapter-tool-result :ok? true) :message $ decode-map-as
+                    .unwrap-or (read-field args0 :message) "|Pause requested"
+                    , 'String
                 (= tool-name |list-chapters)
-                  {} (:ok? true)
-                    :chapters $ map sorted-keys $ fn (k)
-                      let
-                          ch $ .unwrap $ get chapters0 k
-                        {} (:id k) (:order-key k)
-                          :title $ :title ch
-                          :summary $ :summary ch
+                  .assoc (.assoc empty-chapter-tool-result :ok? true) :chapters $ map sorted-keys $ fn (k)
+                    let
+                        ch $ .unwrap $ get chapters0 k
+                      {} (:id k) (:order-key k)
+                        :title $ :title ch
+                        :summary $ :summary ch
                 (= tool-name |get-chapter)
                   .fold (get chapters0 chapter-id)
-                    fn () $ {} (:ok? false) (:error |Chapter-not-found)
+                    fn () $ .assoc (.assoc empty-chapter-tool-result :ok? false) :error |Chapter-not-found
                     fn (ch)
-                      {} (:ok? true) (:chapter ch)
+                      .assoc (.assoc empty-chapter-tool-result :ok? true) :chapter ch
                 (= tool-name |create-chapter)
                   let
                       new-key $ if (empty? chapters0) mid-id $ bisect
@@ -1081,7 +1083,7 @@
                         , max-id
                       new-chapter $ {} (:order-key new-key) (:title title) (:summary summary) (:content |)
                     d! $ app.schema/Op :create-chapter-with title summary |
-                    {} (:ok? true) (:chapter new-chapter)
+                    .assoc (.assoc empty-chapter-tool-result :ok? true) :chapter new-chapter
                 (= tool-name |create-chapter-after)
                   let
                       idx $ .unwrap-or (index-of sorted-keys after-id) -1
@@ -1098,11 +1100,11 @@
                           , max-id
                       new-chapter $ {} (:order-key new-key) (:title title) (:summary summary) (:content |)
                     d! $ app.schema/Op :create-chapter-after after-id title summary |
-                    {} (:ok? true) (:chapter new-chapter)
+                    .assoc (.assoc empty-chapter-tool-result :ok? true) :chapter new-chapter
                 (= tool-name |update-chapter-content)
                   do
                     d! $ app.schema/Op :update-chapter chapter-id $ {} (:content content0)
-                    {} $ :ok? true
+                    .assoc empty-chapter-tool-result :ok? true
                 (= tool-name |update-chapter-meta)
                   let
                       title1 $ read-field args0 :title
@@ -1117,22 +1119,22 @@
                           {} $ :summary $ decode-map-as (.unwrap summary1) 'String
                           {}
                     d! $ app.schema/Op :update-chapter chapter-id updates
-                    {} $ :ok? true
+                    .assoc empty-chapter-tool-result :ok? true
                 (= tool-name |get-chapter-with-neighbors)
                   .fold (get chapters0 chapter-id)
-                    fn () $ {} (:ok? false) (:error |Chapter-not-found)
+                    fn () $ .assoc (.assoc empty-chapter-tool-result :ok? false) :error |Chapter-not-found
                     fn (ch)
                       .merge
-                        {} (:ok? true) (:chapter ch)
+                        .assoc (.assoc empty-chapter-tool-result :ok? true) :chapter ch
                         neighbor-summaries chapter-id
                 (= tool-name |get-novel-config)
-                  {} (:ok? true) (:config novel-config)
-                true $ {} (:ok? false) (:error "|Unknown tool")
+                  .assoc (.assoc empty-chapter-tool-result :ok? true) :config novel-config
+                true $ .assoc (.assoc empty-chapter-tool-result :ok? false) :error "|Unknown tool"
           :examples $ []
-          :schema $ quote $ Fn String Dynamic (Map String app.schema/Chapter)
-            Fn app.schema/Op $ -> Unit
-            , app.schema/NovelConfig
-              -> $ Map Tag Dynamic
+          :schema $ quote $ Fn String Dynamic (Map String schema/Chapter)
+            Fn schema/Op $ -> Unit
+            , schema/NovelConfig
+              -> $ Map Tag $ JsNullish ChapterToolValue
               :features :js-ffi
         'json-pattern? $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn json-pattern? (text)
@@ -1165,9 +1167,9 @@
                     when submit? $ on-submit text search? think? dispatch!
                 , &unit
           :examples $ []
-          :schema $ quote $ Fn (List respo.schema/CoordKey) app.schema/MessageBoxState
+          :schema $ quote $ Fn (List respo.schema/CoordKey) schema/MessageBoxState
             Fn String Bool Bool
-              Fn app.schema/Op $ -> Unit
+              Fn schema/Op $ -> Unit
               -> Unit
             -> respo.schema/RespoListener
         'pick-model $ %{} 'CodeEntry (:doc |)
@@ -1197,7 +1199,7 @@
                   do (println "|No more calls, stopping loop.")
                     d! $ app.schema/Op :states-merge cursor state $ {} (:loading? false) (:done? true)
                       :answer $ :text result
-                      :messages $ upsert-assistant-message messages1 (:text result) (Option :none)
+                      :messages $ upsert-assistant-message messages1 (:text result) None
                       :interaction-id new-interaction-id
                   let
                       first-call $ .unwrap $ first function-calls
@@ -1221,15 +1223,15 @@
                           final-text $ :text followup-result
                           final-interaction-id $ :interaction-id followup-result
                         d! $ app.schema/Op :states-merge cursor state $ {} (:answer final-text)
-                          :messages $ upsert-assistant-message messages1 final-text $ Option :none
+                          :messages $ upsert-assistant-message messages1 final-text None
                           :interaction-id final-interaction-id
                         js-await $ run-agent-loop-v2! gen-ai model final-interaction-id chapters novel-config d! cursor state messages1 *text *thinking-text (dec max-rounds) tools
             , &unit
           :examples $ []
-          :schema $ quote $ Fn app.comp.container/GenAiClient String String (Map String app.schema/Chapter) app.schema/NovelConfig
-            Fn app.schema/Op $ -> Unit
+          :schema $ quote $ Fn GenAiClient String String (Map String schema/Chapter) schema/NovelConfig
+            Fn schema/Op $ -> Unit
             List respo.schema/CoordKey
-            , app.schema/ChatState (List app.schema/ChatMessage) (Ref String) (Ref String) Number (JsNullish JsObject) (-> Unit) (:features :js-ffi) (:async)
+            , schema/ChatState (List schema/ChatMessage) (Ref String) (Ref String) Number (JsNullish JsObject) (-> Unit) (:features :js-ffi) (:async)
         'save-current-session $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn save-current-session (store state)
             if
@@ -1240,7 +1242,7 @@
                     , :is-history? true
                 assoc store :sessions $ append (:sessions store) session
           :examples $ []
-          :schema $ quote $ Fn app.schema/Store app.schema/ChatState (-> app.schema/Store)
+          :schema $ quote $ Fn schema/Store schema/ChatState (-> schema/Store)
         'sdk-object-data $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn sdk-object-data (raw)
             if (map? raw)
@@ -1732,14 +1734,14 @@
                   let
                       err-text $ str "|Failed to load: " e
                     d! $ app.schema/Op :states cursor $ -> state0
-                      assoc :answer $ Option :some err-text
+                      assoc :answer $ Some err-text
                       assoc :loading? false
                       assoc :done? true
-                      assoc :messages $ upsert-assistant-message messages0 err-text $ Option :none
+                      assoc :messages $ upsert-assistant-message messages0 err-text None
             , &unit
           :examples $ []
-          :schema $ quote $ Fn (List respo.schema/CoordKey) (Map String app.schema/Chapter) app.schema/NovelConfig app.schema/ChatState String Bool Bool Tag
-            Fn app.schema/Op $ -> Unit
+          :schema $ quote $ Fn (List respo.schema/CoordKey) (Map String schema/Chapter) schema/NovelConfig schema/ChatState String Bool Bool Tag
+            Fn schema/Op $ -> Unit
             Option String
             JsNullish JsObject
             -> Unit
@@ -1759,8 +1761,8 @@
                     append messages message
                 (:none) (append messages message)
           :examples $ []
-          :schema $ quote $ Fn (List app.schema/ChatMessage) String (Option String)
-            -> $ List app.schema/ChatMessage
+          :schema $ quote $ Fn (List schema/ChatMessage) String (Option String)
+            -> $ List schema/ChatMessage
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.comp.container
           :require (respo-ui.css :as css)
@@ -1801,20 +1803,20 @@
         '*reel $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defref *reel (schema/new-reel)
           :examples $ []
-          :schema $ quote $ Ref (reel.typed/State app.schema/Op app.schema/Store)
+          :schema $ quote $ Ref (typed/State schema/Op schema/Store)
         'dispatch! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn dispatch! (op)
             reset! *reel $ typed/record-op updater (deref *reel) (schema/decode-op op) (generate-id!)
               :timestamp $ shared/date-now-snapshot
             , &unit
           :examples $ []
-          :schema $ quote $ Fn app.schema/Op (-> Unit)
+          :schema $ quote $ Fn schema/Op (-> Unit)
         'dispatch-control! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn dispatch-control! (control)
             reset! *reel $ typed/apply-control updater (deref *reel) control
             , &unit
           :examples $ []
-          :schema $ quote $ Fn reel.typed/Control (-> Unit)
+          :schema $ quote $ Fn typed/Control (-> Unit)
         'install-input-policy! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn install-input-policy! ()
             browser/add-event-listener! |dblclick $ fn (event) (event .prevent-default!)
@@ -1980,9 +1982,9 @@
           :schema $ quote StructDef
         'chat-state $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def chat-state
-            ChatState :answer (Option :none) :thinking (Option :none) :loading? false :done? false :messages ([]) :interaction-id (Option :none) :model :gemini
+            ChatState :answer None :thinking None :loading? false :done? false :messages ([]) :interaction-id None :model :gemini
           :examples $ []
-          :schema $ quote app.schema/ChatState
+          :schema $ quote ChatState
         'data-map $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn data-map (raw)
             decode-map-as
@@ -2034,21 +2036,21 @@
                   decode-map-as changes $ Map Tag String
               _ $ raise "|Unknown application operation"
           :examples $ []
-          :schema $ quote $ Fn AnyEnum (-> app.schema/Op) (:open :decode)
+          :schema $ quote $ Fn AnyEnum (-> Op) (:open :decode)
         'empty-records $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def empty-records ([])
           :examples $ []
-          :schema $ quote $ List (reel.typed/Record app.schema/Op)
+          :schema $ quote $ List (typed/Record Op)
         'message-box-state $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def message-box-state (MessageBoxState :content | :search? false :think? false)
           :examples $ []
-          :schema $ quote app.schema/MessageBoxState
+          :schema $ quote MessageBoxState
         'new-reel $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn new-reel ()
-            typed/State :base store :store store :records empty-records :pointer (Option :none) :stopped? false :display? false :merged? false
+            typed/State :base store :store store :records empty-records :pointer None :stopped? false :display? false :merged? false
           :examples $ []
           :schema $ quote $ Fn
-            -> $ reel.typed/State app.schema/Op app.schema/Store
+            -> $ typed/State Op Store
         'normalize-chapter $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn normalize-chapter (raw key)
             let
@@ -2058,13 +2060,12 @@
                       match (struct-definition typed)
                         (:some definition) (identical? definition Chapter)
                         (:none) false
-                      Option :some typed
-                      Option :none
+                      Some typed
+                      , None
                     _ other $ if
                       = :Chapter $ &struct:get-name other
-                      Option :none
-                      raise "|Unexpected record kind"
-                  Option :none
+                      , None $ raise "|Unexpected record kind"
+                  , None
               match current
                 (:some typed) typed
                 (:none)
@@ -2073,7 +2074,7 @@
                       normalize-optional-field :id $ fn (value) (decode-map-as value 'String)
                     , 'Chapter
           :examples $ []
-          :schema $ quote $ Fn T String (-> app.schema/Chapter) (:generics T) (:features :js-ffi)
+          :schema $ quote $ Fn T String (-> Chapter) (:generics T) (:features :js-ffi)
         'normalize-chat-message $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn normalize-chat-message (raw)
             let
@@ -2083,13 +2084,12 @@
                       match (struct-definition typed)
                         (:some definition) (identical? definition ChatMessage)
                         (:none) false
-                      Option :some typed
-                      Option :none
+                      Some typed
+                      , None
                     _ other $ if
                       = :ChatMessage $ &struct:get-name other
-                      Option :none
-                      raise "|Unexpected record kind"
-                  Option :none
+                      , None $ raise "|Unexpected record kind"
+                  , None
               match current
                 (:some typed) typed
                 (:none)
@@ -2097,7 +2097,7 @@
                     normalize-optional-field (data-map raw) :thinking $ fn (value) (decode-map-as value 'String)
                     , 'ChatMessage
           :examples $ []
-          :schema $ quote $ Fn T (-> app.schema/ChatMessage) (:generics T) (:features :js-ffi)
+          :schema $ quote $ Fn T (-> ChatMessage) (:generics T) (:features :js-ffi)
         'normalize-chat-session $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn normalize-chat-session (raw)
             let
@@ -2107,13 +2107,12 @@
                       match (struct-definition typed)
                         (:some definition) (identical? definition ChatSession)
                         (:none) false
-                      Option :some typed
-                      Option :none
+                      Some typed
+                      , None
                     _ other $ if
                       = :ChatSession $ &struct:get-name other
-                      Option :none
-                      raise "|Unexpected record kind"
-                  Option :none
+                      , None $ raise "|Unexpected record kind"
+                  , None
               match current
                 (:some typed) typed
                 (:none)
@@ -2129,7 +2128,7 @@
                         , 'ChatSession
                     ChatSession :id (:id base) :created-at (:created-at base) :messages messages :model (:model base) :preview (:preview base) :is-history? $ :is-history? base
           :examples $ []
-          :schema $ quote $ Fn T (-> app.schema/ChatSession) (:generics T) (:features :js-ffi)
+          :schema $ quote $ Fn T (-> ChatSession) (:generics T) (:features :js-ffi)
         'normalize-chat-state $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn normalize-chat-state (raw)
             let
@@ -2139,13 +2138,12 @@
                       match (struct-definition typed)
                         (:some definition) (identical? definition ChatState)
                         (:none) false
-                      Option :some typed
-                      Option :none
+                      Some typed
+                      , None
                     _ other $ if
                       = :ChatState $ &struct:get-name other
-                      Option :none
-                      raise "|Unexpected record kind"
-                  Option :none
+                      , None $ raise "|Unexpected record kind"
+                  , None
               match current
                 (:some typed) typed
                 (:none)
@@ -2165,7 +2163,7 @@
                       base $ decode-map-as patched 'ChatState
                     ChatState :answer (:answer base) :thinking (:thinking base) :loading? (:loading? base) :done? (:done? base) :messages messages :interaction-id (:interaction-id base) :model $ :model base
           :examples $ []
-          :schema $ quote $ Fn T (-> app.schema/ChatState) (:generics T) (:features :js-ffi)
+          :schema $ quote $ Fn T (-> ChatState) (:generics T) (:features :js-ffi)
         'normalize-message-box-state $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn normalize-message-box-state (raw)
             let
@@ -2175,13 +2173,12 @@
                       match (struct-definition typed)
                         (:some definition) (identical? definition MessageBoxState)
                         (:none) false
-                      Option :some typed
-                      Option :none
+                      Some typed
+                      , None
                     _ other $ if
                       = :MessageBoxState $ &struct:get-name other
-                      Option :none
-                      raise "|Unexpected record kind"
-                  Option :none
+                      , None $ raise "|Unexpected record kind"
+                  , None
               match current
                 (:some typed) typed
                 (:none)
@@ -2190,7 +2187,7 @@
                       if (nil? raw) ({}) (data-map raw)
                     , 'MessageBoxState
           :examples $ []
-          :schema $ quote $ Fn T (-> app.schema/MessageBoxState) (:generics T) (:features :js-ffi)
+          :schema $ quote $ Fn T (-> MessageBoxState) (:generics T) (:features :js-ffi)
         'normalize-novel-config $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn normalize-novel-config (raw)
             let
@@ -2200,13 +2197,12 @@
                       match (struct-definition typed)
                         (:some definition) (identical? definition NovelConfig)
                         (:none) false
-                      Option :some typed
-                      Option :none
+                      Some typed
+                      , None
                     _ other $ if
                       = :NovelConfig $ &struct:get-name other
-                      Option :none
-                      raise "|Unexpected record kind"
-                  Option :none
+                      , None $ raise "|Unexpected record kind"
+                  , None
               match current
                 (:some typed) typed
                 (:none)
@@ -2214,7 +2210,7 @@
                     .merge (&struct:to-map novel-config) (data-map raw)
                     , 'NovelConfig
           :examples $ []
-          :schema $ quote $ Fn T (-> app.schema/NovelConfig) (:generics T) (:features :js-ffi)
+          :schema $ quote $ Fn T (-> NovelConfig) (:generics T) (:features :js-ffi)
         'normalize-optional-field $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn normalize-optional-field (data key decode)
             .fold (get data key)
@@ -2222,14 +2218,14 @@
               fn (raw)
                 assoc data key $ cond
                     nil? raw
-                    Option :none
+                    , None
                   (enum? raw)
                     match raw
-                      (:none) (Option :none)
+                      (:none) None
                       (:some value)
-                        Option :some $ decode value
+                        Some $ decode value
                       _ $ raise |Invalid-optional-field
-                  true $ Option :some $ decode raw
+                  true $ Some $ decode raw
           :examples $ []
           :schema $ quote $ Fn (Map Tag Dynamic) Tag
             Fn Dynamic $ -> T
@@ -2244,13 +2240,12 @@
                       match (struct-definition typed)
                         (:some definition) (identical? definition Store)
                         (:none) false
-                      Option :some typed
-                      Option :none
+                      Some typed
+                      , None
                     _ other $ if
                       = :Store $ &struct:get-name other
-                      Option :none
-                      raise "|Unexpected record kind"
-                  Option :none
+                      , None $ raise "|Unexpected record kind"
+                  , None
               match current
                 (:some typed) typed
                 (:none)
@@ -2280,7 +2275,7 @@
                       base $ decode-map-as patched 'Store
                     Store :states (:states base) :sessions sessions :current-session-id (:current-session-id base) :model (:model base) :chapters chapters :current-chapter-id (:current-chapter-id base) :router (:router base) :novel-config config
           :examples $ []
-          :schema $ quote $ Fn T (-> app.schema/Store) (:generics T) (:features :js-ffi)
+          :schema $ quote $ Fn T (-> Store) (:generics T) (:features :js-ffi)
           :tests $ [] $ %{} 'TestEntry (:name |legacy-map-struct-roundtrip)
             :code $ quote $ let
                 legacy $ {}
@@ -2303,14 +2298,14 @@
                 chapter $ .unwrap $ get (:chapters normalized) |T
                 restored $ normalize-store $ parse-cirru-edn (format-cirru-edn normalized)
               assert= "|合成 中文" $ :content message
-              assert= (Option :none) (:thinking message)
+              assert= None $ :thinking message
               assert= 0 $ :created-at session
               assert= false $ :is-history? session
-              assert= (Option :none) (:current-session-id normalized)
-              assert= (Option :none) (:current-chapter-id normalized)
-              assert= (Option :none) (:model normalized)
+              assert= None $ :current-session-id normalized
+              assert= None $ :current-chapter-id normalized
+              assert= None $ :model normalized
               assert= |T $ :order-key chapter
-              assert= (Option :some |T) (:id chapter)
+              assert= (Some |T) (:id chapter)
               assert= "|合成小说" $ :title $ :novel-config normalized
               assert= normalized restored
               assert= true $ identical? normalized $ normalize-store normalized
@@ -2319,14 +2314,14 @@
         'novel-config $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def novel-config (NovelConfig :title | :content |)
           :examples $ []
-          :schema $ quote app.schema/NovelConfig
+          :schema $ quote NovelConfig
         'store $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def store
             Store :states
               {} $ :cursor $ []
-              , :sessions ([]) :current-session-id (Option :none) :model (Option :none) :chapters ({}) :current-chapter-id (Option :none) :router :home :novel-config novel-config
+              , :sessions ([]) :current-session-id None :model None :chapters ({}) :current-chapter-id None :router :home :novel-config novel-config
           :examples $ []
-          :schema $ quote app.schema/Store
+          :schema $ quote Store
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.schema
           :require $ reel.typed :as typed
@@ -2352,9 +2347,9 @@
               (:hydrate-storage data)
                 schema/normalize-store $ .merge (&struct:to-map store) data
               (:save-session state)
-                assoc (save-current-session store state) :current-session-id $ Option :none
+                assoc (save-current-session store state) :current-session-id None
               (:session mode id)
-                assoc store :current-session-id $ Option :some id
+                assoc store :current-session-id $ Some id
               (:remove-session id)
                 assoc store :sessions $ filter (:sessions store)
                   fn (session)
@@ -2367,10 +2362,10 @@
                         &set:to-list $ keys chapters
                         , &compare
                       , max-id
-                    chapter $ schema/Chapter :order-key key :id (Option :none) :title "|New Chapter" :summary | :content |
+                    chapter $ schema/Chapter :order-key key :id None :title "|New Chapter" :summary | :content |
                   -> store
                     assoc :chapters $ assoc chapters key chapter
-                    assoc :current-chapter-id $ Option :some key
+                    assoc :current-chapter-id $ Some key
               (:create-chapter-with title summary content)
                 let
                     chapters $ :chapters store
@@ -2379,10 +2374,10 @@
                         &set:to-list $ keys chapters
                         , &compare
                       , max-id
-                    chapter $ schema/Chapter :order-key key :id (Option :none) :title title :summary summary :content content
+                    chapter $ schema/Chapter :order-key key :id None :title title :summary summary :content content
                   -> store
                     assoc :chapters $ assoc chapters key chapter
-                    assoc :current-chapter-id $ Option :some key
+                    assoc :current-chapter-id $ Some key
               (:create-chapter-after after-key title summary content)
                 let
                     chapters $ :chapters store
@@ -2397,16 +2392,16 @@
                       if (empty? chapters) mid-id $ bisect
                         .unwrap $ last sorted
                         , max-id
-                    chapter $ schema/Chapter :order-key key :id (Option :none) :title title :summary summary :content content
+                    chapter $ schema/Chapter :order-key key :id None :title title :summary summary :content content
                   -> store
                     assoc :chapters $ assoc chapters key chapter
-                    assoc :current-chapter-id $ Option :some key
+                    assoc :current-chapter-id $ Some key
               (:select-chapter key)
-                assoc store :current-chapter-id $ Option :some key
+                assoc store :current-chapter-id $ Some key
               (:delete-chapter key)
                 -> store
                   assoc :chapters $ dissoc (:chapters store) key
-                  assoc :current-chapter-id $ Option :none
+                  assoc :current-chapter-id None
               (:update-chapter key updates)
                 match
                   get (:chapters store) key
@@ -2416,7 +2411,7 @@
                       , key
                   (:none) store
           :examples $ []
-          :schema $ quote $ Fn app.schema/Store app.schema/Op String Number (-> app.schema/Store)
+          :schema $ quote $ Fn schema/Store schema/Op String Number (-> schema/Store)
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater
           :require

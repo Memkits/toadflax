@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "@calcit/procs": "0.40.0",
+    "@calcit/procs": "0.41.0",
     "@google/genai": "^1.39.0",
     "axios": "^1.12.2",
     "cirru-color": "^0.2.4",
