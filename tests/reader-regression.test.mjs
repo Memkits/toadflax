@@ -27,6 +27,8 @@ test("actual initial container renders with a typed Reel and no chapter selected
   const html = make_string(app.comp_container(root, () => {}));
   assert.ok(html.length > 100);
   assert.ok(!html.includes("Loading..."));
+  const loading = c.assoc(store, t.states, map(t.data, map(c.to_tag("loading?"), true)));
+  assert.ok(make_string(app.comp_container(new_reel(loading), () => {})).includes("Loading..."));
 });
 test("selected chapter and real Markdown block output remain renderable", () => {
   const before = c.assoc(c.assoc(store, t.chapters, map("T", chapter("T"))), t["current-chapter-id"], some("T"));

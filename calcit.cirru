@@ -564,7 +564,7 @@
                                 if (:loading? state)
                                   Some $ div
                                     {} $ :style $ {} (:display :flex) (:justify-content :center) (:align-items :center) (:margin |8px)
-                                    memof1-call-by :abort-streaming comp-abort |Loading...
+                                    memof1-call-unary comp-abort |Loading...
                                   , None
                               if done?
                                 Some $ div $ {}
@@ -1775,7 +1775,7 @@
             app.config :refer $ dev?
             respo-md.comp.md :refer $ comp-md-block style-code-block
             respo-ui.comp :refer $ comp-copy comp-close
-            memof.once :refer $ memof1-call-binary memof1-call-by
+            memof.once :refer $ memof1-call-binary memof1-call-unary
             |@google/genai :refer $ GoogleGenAI Modality
             feather.core :refer $ comp-i
             respo-alerts.core :refer $ use-modal-menu use-prompt use-drawer
