@@ -1,0 +1,6 @@
+[
+  ["edit", "def", "--input-format", "cirru", "--code", "defunion ChapterToolValue Bool String app.schema/Chapter app.schema/NovelConfig (Map Tag String) (List (Map Tag String))", "--", "app.comp.container/ChapterToolValue"],
+  ["edit", "schema", "--input-format", "cirru", "--code", "quote $ Fn respo.schema/States respo.schema/Element (Fn String Bool Bool (Fn app.schema/Op (-> Unit)) (-> Unit)) (-> respo.schema/Component) (:features :js-ffi)", "--", "app.comp.container/comp-message-box"],
+  ["edit", "schema", "--input-format", "cirru", "--code", "quote $ Fn String Dynamic (Map String app.schema/Chapter) (Fn app.schema/Op (-> Unit)) app.schema/NovelConfig (-> (Map Tag (JsNullish app.comp.container/ChapterToolValue))) (:features :js-ffi)", "--", "app.comp.container/handle-chapter-tool-call"],
+  ["edit", "format"]
+]
