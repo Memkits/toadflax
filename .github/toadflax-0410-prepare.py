@@ -35,7 +35,12 @@ assert count == 12, count
 neighbors = read_tree("neighbors.json")
 assert [entry[0] for entry in neighbors[1:]] == [":previous", ":next"], neighbors
 assert neighbors[0] == "{}"
-for path, tree in [("@4.3", branches), ("@4.1.3.1.3.2", typed_map(neighbors[1:]))]:
+neighbor_hint = ["hint-fn", ["Fn", "String", ["->", ["Map", "Tag", ["JsNullish", "ChapterToolValue"]]]]]
+for path, tree in [
+    ("@4.3", branches),
+    ("@4.1.3.1.3.2", typed_map(neighbors[1:])),
+    ("@4.1.3.1.2", neighbor_hint),
+]:
     ops.insert(-1, ["tree", "replace", "--path", path, "--input-format", "json-ast",
                     "--code", json.dumps(tree), "--", target])
 (out / "transaction.json").write_text(json.dumps(ops))
