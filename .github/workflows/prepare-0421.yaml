@@ -47,9 +47,9 @@ jobs:
     - name: Prepare typed state operation
       run: |
         set -euo pipefail
-        ops='[["edit","def","app.schema/UiState","--code","quote (defunion UiState ChatState MessageBoxState NovelConfig (Map Tag Dynamic))"],["edit","schema","app.schema/UiState","--code","quote UnionDef"],["tree","replace","app.schema/Op","--path","4.2","--expect","quote Dynamic","--code","quote UiState"],["tree","replace","app.schema/decode-op","--path","3.4.1.3","--expect","quote value","--code","quote (decode-map-as value UiState)"],["edit","format"]]'
+        ops='[["edit","def","app.schema/UiState","--code","quote (defunion UiState ChatState MessageBoxState NovelConfig)"],["edit","schema","app.schema/UiState","--code","quote UnionDef"],["tree","replace","app.schema/Op","--path","4.2","--expect","quote Dynamic","--code","quote UiState"],["tree","replace","app.schema/decode-op","--path","3.4.1","--code","quote (let ((path (decode-map-as cursor (List respo.schema/CoordKey)))) (if (map? value) (Op :legacy-states path (decode-map-as value (Map Tag Dynamic))) (Op :states path (decode-map-as value UiState))))"],["tree","insert","app.schema/Op","--path","4","--at","after","--code","quote (:legacy-states (List respo.schema/CoordKey) (Map Tag Dynamic))"],["tree","insert","app.schema/decode-op","--path","3.4","--at","after","--code","quote ((:legacy-states cursor value) (Op :legacy-states (decode-map-as cursor (List respo.schema/CoordKey)) (decode-map-as value (Map Tag Dynamic))))"],["tree","insert","app.updater/updater","--path","3.4","--at","after","--code","quote ((:legacy-states cursor state) (let ((tree (respo.cursor/update-state-tree (:states store) cursor state))) (if (map? tree) (assoc store :states tree) (raise |Expected-state-map))))"],["edit","format"]]'
         calcit edit transaction --code "$ops" --dry-run --format json > /tmp/toadflax-transaction.json
-        jq -e '.changed and (.operations | length == 5)' /tmp/toadflax-transaction.json
+        jq -e '.changed and (.operations | length == 8)' /tmp/toadflax-transaction.json
         calcit edit transaction --code "$ops" --expect-revision "$(jq -r .original_revision /tmp/toadflax-transaction.json)"
         git diff --binary -- calcit.cirru > /tmp/toadflax-0421.patch
         test -s /tmp/toadflax-0421.patch
