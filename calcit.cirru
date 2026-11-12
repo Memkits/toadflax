@@ -96,7 +96,7 @@
                 _ $ println "|[→ LLM] Sending" (.len messages1) |messages
                 tools-list tools
                 prev-interaction-id $ :interaction-id state
-              d! $ app.schema/Op :states-merge cursor state $ {} (:answer nil) (:thinking nil) (:loading? true) (:done? false) (:messages messages1)
+              d! $ app.schema/Op :states-merge cursor state $ {} (:answer None) (:thinking None) (:loading? true) (:done? false) (:messages messages1)
               let
                   request-obj $ build-v2-request model content messages0 prev-interaction-id tools-list chapters current-chapter-id
                   interaction $ js-await $
@@ -112,7 +112,7 @@
                 if
                   not $ empty? function-calls
                   js-await $ run-agent-loop-v2! gen-ai model new-interaction-id chapters novel-config d! cursor state messages1 *text *thinking-text 10 tools-list
-                  d! $ app.schema/Op :states-merge cursor state $ {} (:answer answer-text) (:thinking nil) (:loading? false) (:done? true)
+                  d! $ app.schema/Op :states-merge cursor state $ {} (:answer answer-text) (:thinking None) (:loading? false) (:done? true)
                     :messages $ upsert-assistant-message messages1 answer-text None
                     :interaction-id new-interaction-id
             , &unit
@@ -219,7 +219,7 @@
                 :class-name $ if selected? (str-spaced style-chapter-item style-chapter-item-active) style-chapter-item
                 :on-click $ fn (e d!)
                   hint-fn $ Fn (Map Tag Dynamic)
-                    Fn app.schema/Op $ -> Unit
+                    Fn schema/Op $ -> Unit
                     -> Unit
                   on-select (:order-key chapter) d!
                   , &unit
@@ -235,7 +235,7 @@
                 {} (:class-name style-chapter-delete)
                   :on-click $ fn (e d!)
                     hint-fn $ Fn (Map Tag Dynamic)
-                      Fn app.schema/Op $ -> Unit
+                      Fn schema/Op $ -> Unit
                       -> Unit
                     browser/event-stop-propagation! $ browser/event-host $ .unwrap (read-field e :event)
                     on-delete (:order-key chapter) d!
@@ -286,7 +286,7 @@
                       :class-name $ str-spaced css/button
                       :on-click $ fn (e d!)
                         hint-fn $ Fn (Map Tag Dynamic)
-                          Fn app.schema/Op $ -> Unit
+                          Fn schema/Op $ -> Unit
                           -> Unit
                         on-generate d!
                         , &unit
@@ -311,7 +311,7 @@
                     {} (:class-name style-chapter-create)
                       :on-click $ fn (e d!)
                         hint-fn $ Fn (Map Tag Dynamic)
-                          Fn app.schema/Op $ -> Unit
+                          Fn schema/Op $ -> Unit
                           -> Unit
                         on-create d!
                         , &unit
@@ -336,7 +336,7 @@
                     :style $ {} $ :margin-top |16px
                     :on-click $ fn (e d!)
                       hint-fn $ Fn (Map Tag Dynamic)
-                        Fn app.schema/Op $ -> Unit
+                        Fn schema/Op $ -> Unit
                         -> Unit
                       on-generate-next d!
                       , &unit
@@ -414,7 +414,7 @@
                     :render $ fn (on-close)
                       hint-fn $ Fn
                         Fn
-                          Fn app.schema/Op $ -> Unit
+                          Fn schema/Op $ -> Unit
                           -> Unit
                         -> respo.schema/Component
                       comp-sessions-modal sessions
@@ -489,7 +489,7 @@
                                 :style $ {} $ :cursor :pointer
                                 :on-click $ fn (e d!)
                                   hint-fn $ Fn respo.schema/RespoEvent
-                                    Fn app.schema/Op $ -> Unit
+                                    Fn schema/Op $ -> Unit
                                     -> Unit
                                   .show sessions-plugin d!
                                   , &unit
@@ -583,7 +583,7 @@
                                     :class-name $ str-spaced css/link style-clear-button
                                     :on-click $ fn (e d!)
                                       hint-fn $ Fn respo.schema/RespoEvent
-                                        Fn app.schema/Op $ -> Unit
+                                        Fn schema/Op $ -> Unit
                                         -> Unit
                                       d! $ app.schema/Op :states-merge cursor state $ {}
                                         :messages $ []
@@ -596,7 +596,7 @@
                             :style $ {}
                             :on-click $ fn (e d!)
                               hint-fn $ Fn respo.schema/RespoEvent
-                                Fn app.schema/Op $ -> Unit
+                                Fn schema/Op $ -> Unit
                                 -> Unit
                               ; d! $ :: :change-model
                               .show model-plugin d!
@@ -643,13 +643,13 @@
                       :class-name $ str-spaced css/textarea css/font-code! style-textbox
                       :on-input $ fn (e d!)
                         hint-fn $ Fn (Map Tag Dynamic)
-                          Fn app.schema/Op $ -> Unit
+                          Fn schema/Op $ -> Unit
                           -> Unit
                         d! $ app.schema/Op :states cursor $ assoc state :content (event-text e)
                         , &unit
                       :on-keydown $ fn (e d!)
                         hint-fn $ Fn (Map Tag Dynamic)
-                          Fn app.schema/Op $ -> Unit
+                          Fn schema/Op $ -> Unit
                           -> Unit
                         if
                           and
@@ -666,7 +666,7 @@
                           {} (:class-name style-clear)
                             :on-click $ fn (e d!)
                               hint-fn $ Fn (Map Tag Dynamic)
-                                Fn app.schema/Op $ -> Unit
+                                Fn schema/Op $ -> Unit
                                 -> Unit
                               d! $ app.schema/Op :states cursor $ assoc state :content |
                               .fold (browser/query-selector |#message)
@@ -683,7 +683,7 @@
                               :class-name $ str-spaced css/row style-checkbox
                               :on-click $ fn (e d!)
                                 hint-fn $ Fn (Map Tag Dynamic)
-                                  Fn app.schema/Op $ -> Unit
+                                  Fn schema/Op $ -> Unit
                                   -> Unit
                                 d! $ app.schema/Op :states cursor $ assoc state :think? (not think?)
                                 , &unit
@@ -694,7 +694,7 @@
                               :class-name $ str-spaced css/row style-checkbox
                               :on-click $ fn (e d!)
                                 hint-fn $ Fn (Map Tag Dynamic)
-                                  Fn app.schema/Op $ -> Unit
+                                  Fn schema/Op $ -> Unit
                                   -> Unit
                                 d! $ app.schema/Op :states cursor $ assoc state :search? (not search?)
                                 , &unit
@@ -705,7 +705,7 @@
                             :inner-text |Submit
                             :on-click $ fn (e d!)
                               hint-fn $ Fn (Map Tag Dynamic)
-                                Fn app.schema/Op $ -> Unit
+                                Fn schema/Op $ -> Unit
                                 -> Unit
                               ; println $ :content state
                               on-submit content search? think? d!
@@ -742,7 +742,7 @@
                     :class-name css/input
                     :on-input $ fn (e d!)
                       hint-fn $ Fn (Map Tag Dynamic)
-                        Fn app.schema/Op $ -> Unit
+                        Fn schema/Op $ -> Unit
                         -> Unit
                       d! $ app.schema/Op :states cursor $ assoc state :title (event-text e)
                       , &unit
@@ -757,7 +757,7 @@
                     :placeholder "|Enter your novel's overall settings, world building, character profiles, etc."
                     :on-input $ fn (e d!)
                       hint-fn $ Fn (Map Tag Dynamic)
-                        Fn app.schema/Op $ -> Unit
+                        Fn schema/Op $ -> Unit
                         -> Unit
                       d! $ app.schema/Op :states cursor $ assoc state :content (event-text e)
                       , &unit
@@ -768,7 +768,7 @@
                     {} (:class-name css/button)
                       :on-click $ fn (e d!)
                         hint-fn $ Fn (Map Tag Dynamic)
-                          Fn app.schema/Op $ -> Unit
+                          Fn schema/Op $ -> Unit
                           -> Unit
                         println "|[Settings Save] Saving state:" state
                         d! $ app.schema/Op :update-novel-config $ decode-map-as (&struct:to-map state) (Map Tag String)
@@ -779,7 +779,7 @@
                     {} (:class-name css/button)
                       :on-click $ fn (e d!)
                         hint-fn $ Fn (Map Tag Dynamic)
-                          Fn app.schema/Op $ -> Unit
+                          Fn schema/Op $ -> Unit
                           -> Unit
                         d! $ app.schema/Op :router :home
                         , &unit
@@ -810,7 +810,7 @@
                             :style $ {} (:flex |1) (:cursor :pointer) (:min-width 0) (:overflow :hidden)
                             :on-click $ fn (e d!)
                               hint-fn $ Fn (Map Tag Dynamic)
-                                Fn app.schema/Op $ -> Unit
+                                Fn schema/Op $ -> Unit
                                 -> Unit
                               on-select session-id d!
                               on-close d!
@@ -826,7 +826,7 @@
                           {} (:class-name style-delete-button)
                             :on-click $ fn (e d!)
                               hint-fn $ Fn (Map Tag Dynamic)
-                                Fn app.schema/Op $ -> Unit
+                                Fn schema/Op $ -> Unit
                                 -> Unit
                               browser/event-stop-propagation! $ browser/event-host $ .unwrap (read-field e :event)
                               d! $ app.schema/Op :remove-session session-id
@@ -1150,7 +1150,7 @@
             %{} respo.schema/RespoListener (:name :on-fill)
               :handler $ fn (event dispatch!)
                 hint-fn $ Fn AnyEnum
-                  Fn app.schema/Op $ -> Unit
+                  Fn schema/Op $ -> Unit
                   -> Unit
                 match event $
                   :fill-text info
@@ -1911,6 +1911,10 @@
             :thinking $ Option String
           :examples $ []
           :schema $ quote StructDef
+        'ChatPatchValue $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defunion ChatPatchValue String Bool Tag (Option String) (List app.schema/ChatMessage)
+          :examples $ []
+          :schema $ quote UnionDef
         'ChatSession $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstruct ChatSession (:id String) (:created-at Number)
             :messages $ List app.schema/ChatMessage
@@ -1949,7 +1953,7 @@
             :update-novel-config $ Map Tag String
             :router Tag
             :states (List respo.schema/CoordKey) Dynamic
-            :states-merge (List respo.schema/CoordKey) app.schema/ChatState $ Map Tag Dynamic
+            :states-merge (List respo.schema/CoordKey) app.schema/ChatState $ Map Tag app.schema/ChatPatchValue
             :hydrate-storage $ Map Tag Dynamic
             :save-session app.schema/ChatState
             :session Tag String
@@ -2013,7 +2017,12 @@
                 Op :states-merge
                   decode-map-as cursor $ List respo.schema/CoordKey
                   normalize-chat-state state
-                  decode-map-as changes $ Map Tag Dynamic
+                  decode-map-as
+                    -> (data-map changes)
+                      normalize-optional-field :answer $ fn (value) (decode-map-as value String)
+                      normalize-optional-field :thinking $ fn (value) (decode-map-as value String)
+                      normalize-optional-field :interaction-id $ fn (value) (decode-map-as value String)
+                    Map Tag app.schema/ChatPatchValue
               (:hydrate-storage value)
                 Op :hydrate-storage $ data-map value
               (:save-session state)
@@ -2037,6 +2046,23 @@
               _ $ raise "|Unknown application operation"
           :examples $ []
           :schema $ quote $ Fn AnyEnum (-> Op) (:open :decode)
+          :tests $ [] $ %{} 'TestEntry (:name |legacy-chat-patch-keeps-explicit-clears)
+            :code $ quote $ let
+                input $ {} (:answer nil) (:loading? false)
+                  :messages $ []
+                op $ decode-op $ :: :states-merge ([] :chat) chat-state input
+              match op
+                (:states-merge cursor state patch)
+                  do
+                    assert= ([] :chat) cursor
+                    assert= chat-state state
+                    assert= (Some None) (get patch :answer)
+                    assert= (Some false) (get patch :loading?)
+                    assert=
+                      Some $ []
+                      get patch :messages
+                    assert= None $ get patch :thinking
+                _ $ raise |unexpected-operation
         'empty-records $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def empty-records ([])
           :examples $ []

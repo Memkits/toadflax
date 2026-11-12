@@ -67,7 +67,7 @@ jobs:
         calcit analyze weak-types --only coverage --summary-only --format json
         calcit analyze weak-types --only schema-dynamic,code-dynamic --intent unresolved --summary-only --format json
         calcit analyze weak-types --only deprecated-call --summary-only --format json | jq -e '.data.summary.calls == 0'
-        calcit test app.schema/normalize-store --require-match
+        calcit test --require-match
 
     - name: Select CDN asset path
       id: asset-path
