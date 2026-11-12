@@ -1952,7 +1952,8 @@
           :code $ quote $ defenum Op
             :update-novel-config $ Map Tag String
             :router Tag
-            :states (List respo.schema/CoordKey) Dynamic
+            :states (List respo.schema/CoordKey) UiState
+            :legacy-states (List respo.schema/CoordKey) (Map Tag Dynamic)
             :states-merge (List respo.schema/CoordKey) app.schema/ChatState $ Map Tag app.schema/ChatPatchValue
             :hydrate-storage $ Map Tag Dynamic
             :save-session app.schema/ChatState
@@ -1984,6 +1985,10 @@
             :id String
           :examples $ []
           :schema $ quote StructDef
+        'UiState $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defunion UiState ChatState MessageBoxState NovelConfig
+          :examples $ []
+          :schema $ quote UnionDef
         'chat-state $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def chat-state
             ChatState :answer None :thinking None :loading? false :done? false :messages ([]) :interaction-id None :model :gemini
@@ -2010,9 +2015,15 @@
               (:router value)
                 Op :router $ decode-map-as value 'Tag
               (:states cursor value)
-                Op :states
+                let
+                    path $ decode-map-as cursor $ List respo.schema/CoordKey
+                  if (map? value)
+                    Op :legacy-states path $ decode-map-as value $ Map Tag Dynamic
+                    Op :states path $ decode-map-as value UiState
+              (:legacy-states cursor value)
+                Op :legacy-states
                   decode-map-as cursor $ List respo.schema/CoordKey
-                  , value
+                  decode-map-as value $ Map Tag Dynamic
               (:states-merge cursor state changes)
                 Op :states-merge
                   decode-map-as cursor $ List respo.schema/CoordKey
@@ -2362,6 +2373,10 @@
                   , updates
               (:router route) (assoc store :router route)
               (:states cursor state)
+                let
+                    tree $ respo.cursor/update-state-tree (:states store) cursor state
+                  if (map? tree) (assoc store :states tree) (raise |Expected-state-map)
+              (:legacy-states cursor state)
                 let
                     tree $ respo.cursor/update-state-tree (:states store) cursor state
                   if (map? tree) (assoc store :states tree) (raise |Expected-state-map)
