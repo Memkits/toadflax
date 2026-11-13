@@ -2056,7 +2056,7 @@
                   decode-map-as changes $ Map Tag String
               _ $ raise "|Unknown application operation"
           :examples $ []
-          :schema $ quote $ Fn AnyEnum (-> Op) (:open :decode)
+          :schema $ quote $ Fn Input (-> Op) (:generics Input)
           :tests $ [] $ %{} 'TestEntry (:name |legacy-chat-patch-keeps-explicit-clears)
             :code $ quote $ let
                 input $ {} (:answer nil) (:loading? false)
