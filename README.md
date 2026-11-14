@@ -15,7 +15,7 @@ Configurations:
 
 ### Calcit 0.42.1 使用者影响
 
-使用配对的 CLI 和 `@calcit/procs` 0.42.1 重新安装并构建。章节工具的返回值由具名 union 检查，SDK 继续接收原 JSON 字段，缺失邻章继续编码为 `null`。聊天状态补丁使用具名联合类型，旧事件中的 nil 仍表示清空可选字段。旧存档和页面 HUD 沿用现有行为。
+使用配对的 CLI 和 `@calcit/procs` 0.42.1 重新安装并构建。章节工具的返回值由具名 union 检查，SDK 继续接收原 JSON 字段，缺失邻章继续编码为 `null`。聊天状态补丁使用具名联合类型，旧事件中的 nil 仍表示清空可选字段。旧存档和页面 HUD 沿用现有行为。 正式依赖更新为 Alerts 0.14.4、Reel 0.11.1、Feather 0.6.5、Markdown 0.9.1、UI 0.15.3、Respo 0.19.9、Bisection Key 0.0.47 与 JS FFI 0.2.16。
 
 ### Calcit 0.40.0 历史迁移
 
