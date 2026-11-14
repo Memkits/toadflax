@@ -2148,10 +2148,7 @@
                           .unwrap-or (get data :messages) ([])
                           List Dynamic
                         fn (message) (normalize-chat-message message)
-                      base $ decode-map-as
-                        assoc data :messages $ []
-                        , 'ChatSession
-                    ChatSession :id (:id base) :created-at (:created-at base) :messages messages :model (:model base) :preview (:preview base) :is-history? $ :is-history? base
+                    decode-map-as (assoc data :messages messages) ChatSession
           :examples $ []
           :schema $ quote $ Fn T (-> ChatSession) (:generics T) (:features :js-ffi)
         'normalize-chat-state $ %{} 'CodeEntry (:doc |)
@@ -2180,13 +2177,13 @@
                           .unwrap-or (get data :messages) ([])
                           List Dynamic
                         fn (message) (normalize-chat-message message)
-                      patched $ -> data
+                    decode-map-as
+                      -> data
                         normalize-optional-field :answer $ fn (value) (decode-map-as value 'String)
                         normalize-optional-field :thinking $ fn (value) (decode-map-as value 'String)
                         normalize-optional-field :interaction-id $ fn (value) (decode-map-as value 'String)
-                        assoc :messages $ []
-                      base $ decode-map-as patched 'ChatState
-                    ChatState :answer (:answer base) :thinking (:thinking base) :loading? (:loading? base) :done? (:done? base) :messages messages :interaction-id (:interaction-id base) :model $ :model base
+                        assoc :messages messages
+                      , ChatState
           :examples $ []
           :schema $ quote $ Fn T (-> ChatState) (:generics T) (:features :js-ffi)
         'normalize-message-box-state $ %{} 'CodeEntry (:doc |)
@@ -2290,15 +2287,15 @@
                       config $ .fold (get data :novel-config)
                         fn () novel-config
                         fn (value) (normalize-novel-config value)
-                      patched $ -> data
+                    decode-map-as
+                      -> data
                         normalize-optional-field :current-session-id $ fn (value) (decode-map-as value 'String)
                         normalize-optional-field :current-chapter-id $ fn (value) (decode-map-as value 'String)
                         normalize-optional-field :model $ fn (value) (decode-map-as value 'Tag)
-                        assoc :sessions $ []
-                        assoc :chapters $ {}
-                        assoc :novel-config $ {} (:title |) (:content |)
-                      base $ decode-map-as patched 'Store
-                    Store :states (:states base) :sessions sessions :current-session-id (:current-session-id base) :model (:model base) :chapters chapters :current-chapter-id (:current-chapter-id base) :router (:router base) :novel-config config
+                        assoc :sessions sessions
+                        assoc :chapters chapters
+                        assoc :novel-config config
+                      , Store
           :examples $ []
           :schema $ quote $ Fn T (-> Store) (:generics T) (:features :js-ffi)
           :tests $ [] $ %{} 'TestEntry (:name |legacy-map-struct-roundtrip)
