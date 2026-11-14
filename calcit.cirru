@@ -642,19 +642,21 @@
                     textarea $ {} (:value content) (:placeholder "|Prompt to try LLM...") (:id |message)
                       :class-name $ str-spaced css/textarea css/font-code! style-textbox
                       :on-input $ fn (e d!)
-                        hint-fn $ Fn (Map Tag Dynamic)
+                        hint-fn $ Fn respo.schema/RespoEvent
                           Fn schema/Op $ -> Unit
                           -> Unit
                         d! $ app.schema/Op :states cursor $ assoc state :content (event-text e)
                         , &unit
                       :on-keydown $ fn (e d!)
-                        hint-fn $ Fn (Map Tag Dynamic)
+                        hint-fn $ Fn respo.schema/RespoEvent
                           Fn schema/Op $ -> Unit
                           -> Unit
                         if
                           and
-                            = 13 $ event-number e :keycode
-                            or (event-flag e :meta?) (event-flag e :ctrl?)
+                            = 13 $ :keycode e
+                            or
+                              = true $ :meta? e
+                              = true $ :ctrl? e
                           on-submit content search? think? d!
                         , &unit
                     space-y 4
@@ -741,7 +743,7 @@
                     :value $ :title state
                     :class-name css/input
                     :on-input $ fn (e d!)
-                      hint-fn $ Fn (Map Tag Dynamic)
+                      hint-fn $ Fn respo.schema/RespoEvent
                         Fn schema/Op $ -> Unit
                         -> Unit
                       d! $ app.schema/Op :states cursor $ assoc state :title (event-text e)
@@ -756,7 +758,7 @@
                     :class-name $ str-spaced css/textarea style-settings-textarea
                     :placeholder "|Enter your novel's overall settings, world building, character profiles, etc."
                     :on-input $ fn (e d!)
-                      hint-fn $ Fn (Map Tag Dynamic)
+                      hint-fn $ Fn respo.schema/RespoEvent
                         Fn schema/Op $ -> Unit
                         -> Unit
                       d! $ app.schema/Op :states cursor $ assoc state :content (event-text e)
@@ -906,27 +908,11 @@
           :examples $ []
           :schema $ quote $ Fn (Option schema/Chapter)
             -> $ JsNullish $ Map Tag String
-        'event-flag $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defn event-flag (event key)
-            .fold (read-field event key)
-              fn () false
-              fn (value) (decode-map-as value 'Bool)
-          :examples $ []
-          :schema $ quote $ Fn (Map Tag Dynamic) Tag (-> Bool)
-        'event-number $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defn event-number (event key)
-            decode-map-as
-              .unwrap $ read-field event key
-              , 'Number
-          :examples $ []
-          :schema $ quote $ Fn (Map Tag Dynamic) Tag (-> Number)
         'event-text $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn event-text (event)
-            decode-map-as
-              .unwrap $ read-field event :value
-              , 'String
+            decode-map-as (:value event) 'String
           :examples $ []
-          :schema $ quote $ Fn (Map Tag Dynamic) (-> String)
+          :schema $ quote $ Fn respo.schema/RespoEvent (-> String)
         'extract-interaction-outputs $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn extract-interaction-outputs (interaction)
             let
