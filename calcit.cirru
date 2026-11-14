@@ -389,7 +389,8 @@
                     ; :card-class style-card
                     ; :backdrop-class style-backdrop
                     ; :confirm-class style-confirm
-                    :items models-menu
+                    :items $ map models-menu $ fn (entry)
+                      let[] (value label) entry $ {} (:value value) (:display label)
                     :on-result $ fn (result d!)
                       d! $ app.schema/Op :states cursor $ assoc state :model
                         decode-map-as
@@ -1143,8 +1144,9 @@
           :schema $ quote $ Fn String (-> Bool) (:features :js-ffi)
         'models-menu $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def models-menu
-            [] (:: :item :gemini-flash "|Gemini Flash 3") (:: :item :gemini-pro "|Gemini Pro 3") (:: :item :gemini-flash-lite "|Gemini Flash Lite 2.5")
+            [] ([] :gemini-flash "|Gemini Flash 3") ([] :gemini-pro "|Gemini Pro 3") ([] :gemini-flash-lite "|Gemini Flash Lite 2.5")
           :examples $ []
+          :schema $ quote $ List (Tuple Tag String)
         'on-fill $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn on-fill (cursor state on-submit)
             %{} respo.schema/RespoListener (:name :on-fill)
