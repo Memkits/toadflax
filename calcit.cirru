@@ -1959,7 +1959,7 @@
           :schema $ quote EnumDef
         'Store $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstruct Store
-            :states $ Map Dynamic Dynamic
+            :states $ Map respo.schema/CoordKey Dynamic
             :sessions $ List app.schema/ChatSession
             :current-session-id $ Option String
             :model $ Option Tag
@@ -2362,16 +2362,16 @@
               (:states cursor state)
                 let
                     tree $ respo.cursor/update-state-tree (:states store) cursor state
-                  if (map? tree) (assoc store :states tree) (raise |Expected-state-map)
+                  assoc store :states $ decode-map-as tree $ Map respo.schema/CoordKey Dynamic
               (:legacy-states cursor state)
                 let
                     tree $ respo.cursor/update-state-tree (:states store) cursor state
-                  if (map? tree) (assoc store :states tree) (raise |Expected-state-map)
+                  assoc store :states $ decode-map-as tree $ Map respo.schema/CoordKey Dynamic
               (:states-merge cursor state changes)
                 let
                     next-state $ schema/normalize-chat-state $ .merge (&struct:to-map state) changes
                     tree $ respo.cursor/update-state-tree (:states store) cursor next-state
-                  if (map? tree) (assoc store :states tree) (raise |Expected-state-map)
+                  assoc store :states $ decode-map-as tree $ Map respo.schema/CoordKey Dynamic
               (:hydrate-storage data)
                 schema/normalize-store $ .merge (&struct:to-map store) data
               (:save-session state)
@@ -2440,6 +2440,14 @@
                   (:none) store
           :examples $ []
           :schema $ quote $ Fn schema/Store schema/Op String Number (-> schema/Store)
+          :tests $ [] $ %{} 'TestEntry (:name |typed-state-key)
+            :code $ quote $ let
+                next $ app.updater/updater app.schema/store
+                  app.schema/Op :states ([] :message-box) (app.schema/MessageBoxState :content |hi :search? false :think? false)
+                  , |test 0
+                states $ :states next
+              assert= true $ contains? states :message-box
+            :tags $ #{} :unit
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater
           :require
