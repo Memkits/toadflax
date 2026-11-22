@@ -5,7 +5,7 @@
   :entries $ {} $ :default
     {} (:description |) (:init-fn 'app.main/main!) (:mode :js) (:reload-fn 'app.main/reload!) (:target :browser)
       :feature-policy $ {}
-      :modules $ [] |respo.calcit/ |memof/ |respo-ui.calcit/ |reel.calcit/ |respo-markdown.calcit/ |alerts.calcit/ |respo-feather.calcit/ |bisection-key/ |js-ffi/
+      :modules $ [] |respo.calcit/ |respo-ui.calcit/ |reel.calcit/ |respo-markdown.calcit/ |alerts.calcit/ |respo-feather.calcit/ |bisection-key/ |js-ffi/
       :type-slots $ {} $ :dispatch-op 'app.schema/Op
   :files $ {}
     'app.comp.container $ %{} 'FileEntry
@@ -118,12 +118,12 @@
             , &unit
           :examples $ []
           :schema $ quote $ Fn Tag (List respo.schema/CoordKey) (Map String schema/Chapter) schema/NovelConfig schema/ChatState String Bool Bool (JsNullish JsObject)
-            Fn schema/Op $ -> Unit
+            Fn schema/Op (-> Unit) (:features :io :state)
             Ref String
             Ref String
             Option String
             -> Unit
-            :features :js-ffi
+            :features :io :js-ffi :state
             :async
         'chapter-tools-declarations $ %{} 'CodeEntry (:doc |)
           :code $ quote $ js-array
@@ -211,7 +211,7 @@
               space-x 8
               <> "|✕" style-abort-close
           :examples $ []
-          :schema $ quote $ Fn String (-> respo.schema/Element) (:features :js-ffi)
+          :schema $ quote $ Fn String (-> respo.schema/Element) (:features :js-ffi :state)
         'comp-chapter-item $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-chapter-item (chapter selected? on-select on-delete)
             div
@@ -219,7 +219,7 @@
                 :class-name $ if selected? (str-spaced style-chapter-item style-chapter-item-active) style-chapter-item
                 :on-click $ fn (e d!)
                   hint-fn $ Fn (Map Tag Dynamic)
-                    Fn schema/Op $ -> Unit
+                    Fn schema/Op (-> Unit) (:features :io :state)
                     -> Unit
                   on-select (:order-key chapter) d!
                   , &unit
@@ -235,7 +235,7 @@
                 {} (:class-name style-chapter-delete)
                   :on-click $ fn (e d!)
                     hint-fn $ Fn (Map Tag Dynamic)
-                      Fn schema/Op $ -> Unit
+                      Fn schema/Op (-> Unit) (:features :io :state)
                       -> Unit
                     browser/event-stop-propagation! $ browser/event-host $ .unwrap (read-field e :event)
                     on-delete (:order-key chapter) d!
@@ -244,10 +244,10 @@
           :examples $ []
           :schema $ quote $ Fn schema/Chapter Bool
             Fn String
-              Fn schema/Op $ -> Unit
+              Fn schema/Op (-> Unit) (:features :io :state)
               -> Unit
             Fn String
-              Fn schema/Op $ -> Unit
+              Fn schema/Op (-> Unit) (:features :io :state)
               -> Unit
             -> respo.schema/Component
             :features :js-ffi
@@ -286,7 +286,7 @@
                       :class-name $ str-spaced css/button
                       :on-click $ fn (e d!)
                         hint-fn $ Fn (Map Tag Dynamic)
-                          Fn schema/Op $ -> Unit
+                          Fn schema/Op (-> Unit) (:features :io :state)
                           -> Unit
                         on-generate d!
                         , &unit
@@ -295,7 +295,7 @@
           :examples $ []
           :schema $ quote $ Fn schema/Chapter
             Fn
-              Fn schema/Op $ -> Unit
+              Fn schema/Op (-> Unit) (:features :io :state)
               -> Unit
             -> respo.schema/Component
         'comp-chapter-sidebar $ %{} 'CodeEntry (:doc |)
@@ -311,7 +311,7 @@
                     {} (:class-name style-chapter-create)
                       :on-click $ fn (e d!)
                         hint-fn $ Fn (Map Tag Dynamic)
-                          Fn schema/Op $ -> Unit
+                          Fn schema/Op (-> Unit) (:features :io :state)
                           -> Unit
                         on-create d!
                         , &unit
@@ -336,7 +336,7 @@
                     :style $ {} $ :margin-top |16px
                     :on-click $ fn (e d!)
                       hint-fn $ Fn (Map Tag Dynamic)
-                        Fn schema/Op $ -> Unit
+                        Fn schema/Op (-> Unit) (:features :io :state)
                         -> Unit
                       on-generate-next d!
                       , &unit
@@ -346,16 +346,16 @@
           :examples $ []
           :schema $ quote $ Fn (Map String schema/Chapter) (Option String)
             Fn String
-              Fn schema/Op $ -> Unit
+              Fn schema/Op (-> Unit) (:features :io :state)
               -> Unit
             Fn
-              Fn schema/Op $ -> Unit
+              Fn schema/Op (-> Unit) (:features :io :state)
               -> Unit
             Fn String
-              Fn schema/Op $ -> Unit
+              Fn schema/Op (-> Unit) (:features :io :state)
               -> Unit
             Fn
-              Fn schema/Op $ -> Unit
+              Fn schema/Op (-> Unit) (:features :io :state)
               -> Unit
             -> respo.schema/Component
         'comp-container $ %{} 'CodeEntry (:doc |)
@@ -415,7 +415,7 @@
                     :render $ fn (on-close)
                       hint-fn $ Fn
                         Fn
-                          Fn schema/Op $ -> Unit
+                          Fn schema/Op (-> Unit) (:features :io :state)
                           -> Unit
                         -> respo.schema/Component
                       comp-sessions-modal sessions
@@ -490,7 +490,7 @@
                                 :style $ {} $ :cursor :pointer
                                 :on-click $ fn (e d!)
                                   hint-fn $ Fn respo.schema/RespoEvent
-                                    Fn schema/Op $ -> Unit
+                                    Fn schema/Op (-> Unit) (:features :io :state)
                                     -> Unit
                                   .show sessions-plugin d!
                                   , &unit
@@ -523,14 +523,14 @@
                                       not $ blank? thinking
                                       Some $ div
                                         {} $ :class-name style-thinking
-                                        memof1-call-binary comp-md-block
+                                        comp-md-block
                                           -> thinking $ either |
                                           {} $ :class-name style-md-content
                                       , None
                                     if (= role :assistant)
                                       if (json-pattern? content)
                                         pre $ {} (:class-name style-code-content) (:inner-text content)
-                                        memof1-call-binary comp-md-block
+                                        comp-md-block
                                           -> content $ either |
                                           {} $ :class-name style-md-content
                                       pre $ {} (:class-name style-message-text) (:inner-text content)
@@ -565,7 +565,7 @@
                                 if (:loading? state)
                                   Some $ div
                                     {} $ :style $ {} (:display :flex) (:justify-content :center) (:align-items :center) (:margin |8px)
-                                    memof1-call-unary comp-abort |Loading...
+                                    comp-abort |Loading...
                                   , None
                               if done?
                                 Some $ div $ {}
@@ -584,7 +584,7 @@
                                     :class-name $ str-spaced css/link style-clear-button
                                     :on-click $ fn (e d!)
                                       hint-fn $ Fn respo.schema/RespoEvent
-                                        Fn schema/Op $ -> Unit
+                                        Fn schema/Op (-> Unit) (:features :io :state)
                                         -> Unit
                                       d! $ app.schema/Op :states-merge cursor state $ {}
                                         :messages $ []
@@ -597,7 +597,7 @@
                             :style $ {}
                             :on-click $ fn (e d!)
                               hint-fn $ Fn respo.schema/RespoEvent
-                                Fn schema/Op $ -> Unit
+                                Fn schema/Op (-> Unit) (:features :io :state)
                                 -> Unit
                               ; d! $ :: :change-model
                               .show model-plugin d!
@@ -622,9 +622,9 @@
                 .render create-next-chapter-plugin
           :examples $ []
           :schema $ quote $ Fn (reel.typed/State schema/Op schema/Store)
-            Fn reel.typed/Control $ -> Unit
+            Fn reel.typed/Control (-> Unit) (:features :state)
             -> respo.schema/Component
-            :features :js-ffi :state
+            :features :io :js-ffi :state
         'comp-message-box $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-message-box (states picker-el on-submit)
             let
@@ -644,13 +644,13 @@
                       :class-name $ str-spaced css/textarea css/font-code! style-textbox
                       :on-input $ fn (e d!)
                         hint-fn $ Fn respo.schema/RespoEvent
-                          Fn schema/Op $ -> Unit
+                          Fn schema/Op (-> Unit) (:features :io :state)
                           -> Unit
                         d! $ app.schema/Op :states cursor $ assoc state :content (event-text e)
                         , &unit
                       :on-keydown $ fn (e d!)
                         hint-fn $ Fn respo.schema/RespoEvent
-                          Fn schema/Op $ -> Unit
+                          Fn schema/Op (-> Unit) (:features :io :state)
                           -> Unit
                         if
                           and
@@ -669,7 +669,7 @@
                           {} (:class-name style-clear)
                             :on-click $ fn (e d!)
                               hint-fn $ Fn (Map Tag Dynamic)
-                                Fn schema/Op $ -> Unit
+                                Fn schema/Op (-> Unit) (:features :io :state)
                                 -> Unit
                               d! $ app.schema/Op :states cursor $ assoc state :content |
                               .fold (browser/query-selector |#message)
@@ -686,7 +686,7 @@
                               :class-name $ str-spaced css/row style-checkbox
                               :on-click $ fn (e d!)
                                 hint-fn $ Fn (Map Tag Dynamic)
-                                  Fn schema/Op $ -> Unit
+                                  Fn schema/Op (-> Unit) (:features :io :state)
                                   -> Unit
                                 d! $ app.schema/Op :states cursor $ assoc state :think? (not think?)
                                 , &unit
@@ -697,7 +697,7 @@
                               :class-name $ str-spaced css/row style-checkbox
                               :on-click $ fn (e d!)
                                 hint-fn $ Fn (Map Tag Dynamic)
-                                  Fn schema/Op $ -> Unit
+                                  Fn schema/Op (-> Unit) (:features :io :state)
                                   -> Unit
                                 d! $ app.schema/Op :states cursor $ assoc state :search? (not search?)
                                 , &unit
@@ -708,7 +708,7 @@
                             :inner-text |Submit
                             :on-click $ fn (e d!)
                               hint-fn $ Fn (Map Tag Dynamic)
-                                Fn schema/Op $ -> Unit
+                                Fn schema/Op (-> Unit) (:features :io :state)
                                 -> Unit
                               ; println $ :content state
                               on-submit content search? think? d!
@@ -716,10 +716,10 @@
           :examples $ []
           :schema $ quote $ Fn respo.schema/States respo.schema/Element
             Fn String Bool Bool
-              Fn schema/Op $ -> Unit
+              Fn schema/Op (-> Unit) (:features :io :state)
               -> Unit
             -> respo.schema/Component
-            :features :js-ffi
+            :features :io :js-ffi :state
         'comp-novel-settings $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-novel-settings (states novel-config)
             let
@@ -745,7 +745,7 @@
                     :class-name css/input
                     :on-input $ fn (e d!)
                       hint-fn $ Fn respo.schema/RespoEvent
-                        Fn schema/Op $ -> Unit
+                        Fn schema/Op (-> Unit) (:features :io :state)
                         -> Unit
                       d! $ app.schema/Op :states cursor $ assoc state :title (event-text e)
                       , &unit
@@ -760,7 +760,7 @@
                     :placeholder "|Enter your novel's overall settings, world building, character profiles, etc."
                     :on-input $ fn (e d!)
                       hint-fn $ Fn respo.schema/RespoEvent
-                        Fn schema/Op $ -> Unit
+                        Fn schema/Op (-> Unit) (:features :io :state)
                         -> Unit
                       d! $ app.schema/Op :states cursor $ assoc state :content (event-text e)
                       , &unit
@@ -771,7 +771,7 @@
                     {} (:class-name css/button)
                       :on-click $ fn (e d!)
                         hint-fn $ Fn (Map Tag Dynamic)
-                          Fn schema/Op $ -> Unit
+                          Fn schema/Op (-> Unit) (:features :io :state)
                           -> Unit
                         println "|[Settings Save] Saving state:" state
                         d! $ app.schema/Op :update-novel-config $ decode-map-as (&struct:to-map state) (Map Tag String)
@@ -782,13 +782,13 @@
                     {} (:class-name css/button)
                       :on-click $ fn (e d!)
                         hint-fn $ Fn (Map Tag Dynamic)
-                          Fn schema/Op $ -> Unit
+                          Fn schema/Op (-> Unit) (:features :io :state)
                           -> Unit
                         d! $ app.schema/Op :router :home
                         , &unit
                     <> |Cancel
           :examples $ []
-          :schema $ quote $ Fn respo.schema/States schema/NovelConfig (-> respo.schema/Component)
+          :schema $ quote $ Fn respo.schema/States schema/NovelConfig (-> respo.schema/Component) (:features :io :state)
         'comp-sessions-modal $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-sessions-modal (sessions on-select on-close)
             div
@@ -813,7 +813,7 @@
                             :style $ {} (:flex |1) (:cursor :pointer) (:min-width 0) (:overflow :hidden)
                             :on-click $ fn (e d!)
                               hint-fn $ Fn (Map Tag Dynamic)
-                                Fn schema/Op $ -> Unit
+                                Fn schema/Op (-> Unit) (:features :io :state)
                                 -> Unit
                               on-select session-id d!
                               on-close d!
@@ -829,7 +829,7 @@
                           {} (:class-name style-delete-button)
                             :on-click $ fn (e d!)
                               hint-fn $ Fn (Map Tag Dynamic)
-                                Fn schema/Op $ -> Unit
+                                Fn schema/Op (-> Unit) (:features :io :state)
                                 -> Unit
                               browser/event-stop-propagation! $ browser/event-host $ .unwrap (read-field e :event)
                               d! $ app.schema/Op :remove-session session-id
@@ -838,13 +838,13 @@
           :examples $ []
           :schema $ quote $ Fn (List schema/ChatSession)
             Fn String
-              Fn schema/Op $ -> Unit
+              Fn schema/Op (-> Unit) (:features :io :state)
               -> Unit
             Fn
-              Fn schema/Op $ -> Unit
+              Fn schema/Op (-> Unit) (:features :io :state)
               -> Unit
             -> respo.schema/Component
-            :features :js-ffi
+            :features :io :js-ffi :state
         'comp-top-bar $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-top-bar ()
             div
@@ -1119,10 +1119,10 @@
                 true $ .assoc (.assoc empty-chapter-tool-result :ok? false) :error "|Unknown tool"
           :examples $ []
           :schema $ quote $ Fn String Dynamic (Map String schema/Chapter)
-            Fn schema/Op $ -> Unit
+            Fn schema/Op (-> Unit) (:features :io :state)
             , schema/NovelConfig
               -> $ Map Tag $ JsNullish ChapterToolValue
-              :features :js-ffi
+              :features :io :js-ffi :state
         'json-pattern? $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn json-pattern? (text)
             or (starts-with? text |{) (starts-with? text |[)
@@ -1138,8 +1138,9 @@
             %{} respo.schema/RespoListener (:name :on-fill)
               :handler $ fn (event dispatch!)
                 hint-fn $ Fn AnyEnum
-                  Fn schema/Op $ -> Unit
+                  Fn schema/Op (-> Unit) (:features :io :state)
                   -> Unit
+                  :features :io :state
                 match event $
                   :fill-text info
                   let
@@ -1157,8 +1158,9 @@
           :examples $ []
           :schema $ quote $ Fn (List respo.schema/CoordKey) schema/MessageBoxState
             Fn String Bool Bool
-              Fn schema/Op $ -> Unit
+              Fn schema/Op (-> Unit) (:features :io :state)
               -> Unit
+              :features :io :state
             -> respo.schema/RespoListener
         'pick-model $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn pick-model (variant)
@@ -1217,9 +1219,9 @@
             , &unit
           :examples $ []
           :schema $ quote $ Fn GenAiClient String String (Map String schema/Chapter) schema/NovelConfig
-            Fn schema/Op $ -> Unit
+            Fn schema/Op (-> Unit) (:features :io :state)
             List respo.schema/CoordKey
-            , schema/ChatState (List schema/ChatMessage) (Ref String) (Ref String) Number (JsNullish JsObject) (-> Unit) (:features :js-ffi) (:async)
+            , schema/ChatState (List schema/ChatMessage) (Ref String) (Ref String) Number (JsNullish JsObject) (-> Unit) (:features :io :js-ffi :state) (:async)
         'save-current-session $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn save-current-session (store state)
             if
@@ -1729,11 +1731,11 @@
             , &unit
           :examples $ []
           :schema $ quote $ Fn (List respo.schema/CoordKey) (Map String schema/Chapter) schema/NovelConfig schema/ChatState String Bool Bool Tag
-            Fn schema/Op $ -> Unit
+            Fn schema/Op (-> Unit) (:features :io :state)
             Option String
             JsNullish JsObject
             -> Unit
-            :features :js-ffi
+            :features :io :js-ffi :state
             :async
         'upsert-assistant-message $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn upsert-assistant-message (messages content thinking)
@@ -1763,7 +1765,6 @@
             app.config :refer $ dev?
             respo-md.comp.md :refer $ comp-md-block style-code-block
             respo-ui.comp :refer $ comp-copy comp-close
-            memof.once :refer $ memof1-call-binary memof1-call-unary
             |@google/genai :refer $ GoogleGenAI Modality
             feather.core :refer $ comp-i
             respo-alerts.core :refer $ use-modal-menu use-prompt use-drawer
@@ -1798,13 +1799,13 @@
               :timestamp $ shared/date-now-snapshot
             , &unit
           :examples $ []
-          :schema $ quote $ Fn schema/Op (-> Unit)
+          :schema $ quote $ Fn schema/Op (-> Unit) (:features :state)
         'dispatch-control! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn dispatch-control! (control)
             reset! *reel $ typed/apply-control updater (deref *reel) control
             , &unit
           :examples $ []
-          :schema $ quote $ Fn typed/Control (-> Unit)
+          :schema $ quote $ Fn typed/Control (-> Unit) (:features :state)
         'install-input-policy! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn install-input-policy! ()
             browser/add-event-listener! |dblclick $ fn (event) (event .prevent-default!)
@@ -1837,7 +1838,7 @@
             install-input-policy!
             println |App-started.
           :examples $ []
-          :schema $ quote $ Fn (-> Unit) (:features :js-ffi)
+          :schema $ quote $ Fn (-> Unit) (:features :io :js-ffi :state)
         'mount-target $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn mount-target ()
             match (dom/query-selector |.app)
@@ -1851,7 +1852,7 @@
               :timestamp $ shared/date-now-snapshot
             browser/storage-set! |toadflax $ format-cirru-edn $ :store @*reel
           :examples $ []
-          :schema $ quote $ Fn (-> Unit)
+          :schema $ quote $ Fn (-> Unit) (:features :io :state)
         'reload! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn reload! ()
             if (js-nullish? build-errors)
@@ -1862,7 +1863,7 @@
               hud! |error build-errors
             , &unit
           :examples $ []
-          :schema $ quote $ Fn (-> Unit) (:features :js-ffi)
+          :schema $ quote $ Fn (-> Unit) (:features :io :js-ffi :state)
         'render-app! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn render-app! ()
             respo.core/render-with! (mount-target)

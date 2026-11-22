@@ -1,12 +1,11 @@
 
-{} (:calcit-version |0.42.1)
+{} (:calcit-version |0.44.0)
   :version |0.0.2
-  :dependencies $ {} (|Respo/alerts.calcit |0.14.4)
-    |Respo/reel.calcit |0.11.1
-    |Respo/respo-feather.calcit |0.6.5
-    |Respo/respo-markdown.calcit |0.9.1
-    |Respo/respo-ui.calcit |0.15.3
-    |Respo/respo.calcit |0.19.9
-    |calcit-lang/bisection-key |0.0.47
-    |calcit-lang/js-ffi |0.2.16
-    |calcit-lang/memof |0.0.50
+  :dependencies $ {} (|Respo/alerts.calcit |0.14.9)
+    |Respo/reel.calcit |0.11.5
+    |Respo/respo-feather.calcit |0.6.9
+    |Respo/respo-markdown.calcit |0.9.5
+    |Respo/respo-ui.calcit |0.15.7
+    |Respo/respo.calcit |0.19.13
+    |calcit-lang/bisection-key |0.0.49
+    |calcit-lang/js-ffi |0.2.19
