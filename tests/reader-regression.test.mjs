@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import * as c from "../js-out/calcit.core.mjs";
 import * as app from "../js-out/app.comp.container.mjs";
-import { store, normalize_chapter, normalize_store, normalize_message_box_state, normalize_chat_state, decode_op } from "../js-out/app.schema.mjs";
+import { store, normalize_chapter, normalize_chat_session, normalize_store, normalize_message_box_state, normalize_chat_state, decode_op } from "../js-out/app.schema.mjs";
+import { event__GT_edn } from "../js-out/respo.util.format.mjs";
 import { updater } from "../js-out/app.updater.mjs";
 import { new_reel } from "../js-out/reel.typed.mjs";
 import { make_string } from "../js-out/respo.render.html.mjs";
@@ -14,6 +15,45 @@ const op = (key, ...args) => decode_op(c._$o__$o_(t[key], ...args));
 const some = (value) => c._PCT__$o__$o_(c.Option, t.some, value);
 const none = () => c._PCT__$o__$o_(c.Option, t.none);
 const chapter = (id) => normalize_chapter(map(t.id, id, t.title, `Title ${id}`, t.summary, "Summary", t.content, "Body"), id);
+
+test("chapter and session delete clicks stop propagation and dispatch once", () => {
+  const key = (name) => c.to_tag(name);
+  function clickHandlers(component) {
+    const handlers = [];
+    function visit(node) {
+      const value = c._$n_enum_$o_nth(node, 1);
+      if (value.fields.some(field => field.value === "tree")) {
+        visit(c.option_$o_unwrap(c.option_$o_unwrap(c.get(value, key("tree")))));
+        return;
+      }
+      const event = c.get(value, key("event"));
+      if (c.option_$o_some_$q_(event)) {
+        const click = c.get(c.option_$o_unwrap(event), key("click"));
+        if (c.option_$o_some_$q_(click)) handlers.push(c.option_$o_unwrap(click));
+      }
+      for (const child of c.listToArray(c.option_$o_unwrap(c.get(value, key("children"))))) {
+        const nested = c.option_$o_unwrap(c.get(child, key("node")));
+        if (c.option_$o_some_$q_(nested)) visit(c.option_$o_unwrap(nested));
+      }
+    }
+    visit(c.option_$o_unwrap(c.option_$o_unwrap(c.get(component, key("tree")))));
+    return handlers;
+  }
+  const session = normalize_chat_session(map(key("id"), "s1", key("created-at"), 0, key("messages"), c._$L_(), key("model"), key("gemini"), key("preview"), "demo", key("is-history?"), true));
+  for (const [component, expected] of [
+    [app.comp_chapter_item(chapter("T"), false, () => {}, (id, dispatch) => dispatch(id)), "T"],
+    [app.comp_sessions_modal(c._$L_(session), () => {}, () => {}), "s1"],
+  ]) {
+    const handlers = clickHandlers(component);
+    assert.equal(handlers.length, 2);
+    const event = new Event("click", { bubbles: true });
+    const calls = [];
+    handlers[1](event__GT_edn(event), (value) => calls.push(value));
+    assert.equal(event.cancelBubble, true);
+    assert.equal(calls.length, 1);
+    assert.equal(typeof calls[0] === "string" ? calls[0] : c._$n_enum_$o_nth(calls[0], 1), expected);
+  }
+});
 
 test("missing and null chapter selection returns none rather than raw nil", () => {
   const chapters = map("T", chapter("T"));

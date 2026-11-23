@@ -218,7 +218,7 @@
               {}
                 :class-name $ if selected? (str-spaced style-chapter-item style-chapter-item-active) style-chapter-item
                 :on-click $ fn (e d!)
-                  hint-fn $ Fn (Map Tag Dynamic)
+                  hint-fn $ Fn respo.schema/RespoEvent
                     Fn schema/Op (-> Unit) (:features :io :state)
                     -> Unit
                   on-select (:order-key chapter) d!
@@ -234,10 +234,10 @@
               span
                 {} (:class-name style-chapter-delete)
                   :on-click $ fn (e d!)
-                    hint-fn $ Fn (Map Tag Dynamic)
+                    hint-fn $ Fn respo.schema/RespoEvent
                       Fn schema/Op (-> Unit) (:features :io :state)
                       -> Unit
-                    browser/event-stop-propagation! $ browser/event-host $ .unwrap (read-field e :event)
+                    browser/event-stop-propagation! $ browser/event-host $ :event e
                     on-delete (:order-key chapter) d!
                     , &unit
                 <> "|✕"
@@ -285,7 +285,7 @@
                     {}
                       :class-name $ str-spaced css/button
                       :on-click $ fn (e d!)
-                        hint-fn $ Fn (Map Tag Dynamic)
+                        hint-fn $ Fn respo.schema/RespoEvent
                           Fn schema/Op (-> Unit) (:features :io :state)
                           -> Unit
                         on-generate d!
@@ -310,7 +310,7 @@
                   button
                     {} (:class-name style-chapter-create)
                       :on-click $ fn (e d!)
-                        hint-fn $ Fn (Map Tag Dynamic)
+                        hint-fn $ Fn respo.schema/RespoEvent
                           Fn schema/Op (-> Unit) (:features :io :state)
                           -> Unit
                         on-create d!
@@ -335,7 +335,7 @@
                   {} (:class-name css/button)
                     :style $ {} $ :margin-top |16px
                     :on-click $ fn (e d!)
-                      hint-fn $ Fn (Map Tag Dynamic)
+                      hint-fn $ Fn respo.schema/RespoEvent
                         Fn schema/Op (-> Unit) (:features :io :state)
                         -> Unit
                       on-generate-next d!
@@ -668,7 +668,7 @@
                         span
                           {} (:class-name style-clear)
                             :on-click $ fn (e d!)
-                              hint-fn $ Fn (Map Tag Dynamic)
+                              hint-fn $ Fn respo.schema/RespoEvent
                                 Fn schema/Op (-> Unit) (:features :io :state)
                                 -> Unit
                               d! $ app.schema/Op :states cursor $ assoc state :content |
@@ -685,7 +685,7 @@
                             {}
                               :class-name $ str-spaced css/row style-checkbox
                               :on-click $ fn (e d!)
-                                hint-fn $ Fn (Map Tag Dynamic)
+                                hint-fn $ Fn respo.schema/RespoEvent
                                   Fn schema/Op (-> Unit) (:features :io :state)
                                   -> Unit
                                 d! $ app.schema/Op :states cursor $ assoc state :think? (not think?)
@@ -696,7 +696,7 @@
                             {}
                               :class-name $ str-spaced css/row style-checkbox
                               :on-click $ fn (e d!)
-                                hint-fn $ Fn (Map Tag Dynamic)
+                                hint-fn $ Fn respo.schema/RespoEvent
                                   Fn schema/Op (-> Unit) (:features :io :state)
                                   -> Unit
                                 d! $ app.schema/Op :states cursor $ assoc state :search? (not search?)
@@ -707,7 +707,7 @@
                             :class-name $ str-spaced css/button style-submit
                             :inner-text |Submit
                             :on-click $ fn (e d!)
-                              hint-fn $ Fn (Map Tag Dynamic)
+                              hint-fn $ Fn respo.schema/RespoEvent
                                 Fn schema/Op (-> Unit) (:features :io :state)
                                 -> Unit
                               ; println $ :content state
@@ -770,7 +770,7 @@
                   button
                     {} (:class-name css/button)
                       :on-click $ fn (e d!)
-                        hint-fn $ Fn (Map Tag Dynamic)
+                        hint-fn $ Fn respo.schema/RespoEvent
                           Fn schema/Op (-> Unit) (:features :io :state)
                           -> Unit
                         println "|[Settings Save] Saving state:" state
@@ -781,7 +781,7 @@
                   button
                     {} (:class-name css/button)
                       :on-click $ fn (e d!)
-                        hint-fn $ Fn (Map Tag Dynamic)
+                        hint-fn $ Fn respo.schema/RespoEvent
                           Fn schema/Op (-> Unit) (:features :io :state)
                           -> Unit
                         d! $ app.schema/Op :router :home
@@ -812,7 +812,7 @@
                           {}
                             :style $ {} (:flex |1) (:cursor :pointer) (:min-width 0) (:overflow :hidden)
                             :on-click $ fn (e d!)
-                              hint-fn $ Fn (Map Tag Dynamic)
+                              hint-fn $ Fn respo.schema/RespoEvent
                                 Fn schema/Op (-> Unit) (:features :io :state)
                                 -> Unit
                               on-select session-id d!
@@ -828,10 +828,10 @@
                         div
                           {} (:class-name style-delete-button)
                             :on-click $ fn (e d!)
-                              hint-fn $ Fn (Map Tag Dynamic)
+                              hint-fn $ Fn respo.schema/RespoEvent
                                 Fn schema/Op (-> Unit) (:features :io :state)
                                 -> Unit
-                              browser/event-stop-propagation! $ browser/event-host $ .unwrap (read-field e :event)
+                              browser/event-stop-propagation! $ browser/event-host $ :event e
                               d! $ app.schema/Op :remove-session session-id
                               , &unit
                           <> "|✕"
