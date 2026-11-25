@@ -1,0 +1,77 @@
+name: Isolated Calcit migration probe
+on:
+  push:
+    branches: [chore/calcit-0451]
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v7.0.1
+        with:
+          repository: Respo/alerts.calcit
+          ref: 2baefeace830aa851b476db0dedd557a72813f95
+          path: .calcit/alerts-candidate
+          persist-credentials: false
+      - uses: actions/setup-node@v6.5.0
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Prepare candidate manifest
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('deps.cirru')
+          s = p.read_text()
+          for old, new in [('0.44.0','0.45.1'),('0.14.9','0.14.12'),('0.11.5','0.11.9'),('0.6.9','0.6.13'),('0.9.5','0.9.9'),('0.15.7','0.16.5'),('0.19.13','0.19.18'),('0.0.49','0.0.52'),('0.2.19','0.2.24')]:
+              s = s.replace(old, new)
+          p.write_text(s)
+          PY
+          corepack enable
+          corepack prepare yarn@4.18.0 --activate
+      - uses: calcit-lang/setup-calcit@v1.5.2
+        with:
+          tools: calcit,caps
+          caps-version: '0.1.2'
+          deps-file: deps.cirru
+      - name: Resolve released modules and link candidate
+        run: |
+          set -euo pipefail
+          cp deps.cirru "$RUNNER_TEMP/candidate-deps.cirru"
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('deps.cirru')
+          s = p.read_text().replace('(:dependencies $ {} (|Respo/alerts.calcit |0.14.12)', '(:dependencies $ {}')
+          p.write_text(s)
+          PY
+          caps --strict --ci
+          cp "$RUNNER_TEMP/candidate-deps.cirru" deps.cirru
+          ln -s "$GITHUB_WORKSPACE/.calcit/alerts-candidate" .calcit/modules/alerts.calcit
+          yarn config set npmMinimalAgeGate 60m
+          yarn add @calcit/procs@0.45.1
+      - name: Check all definitions and strict types
+        run: |
+          set -euo pipefail
+          calcit --check-only --all-defs
+          calcit fix --workflow strict --verify --format json | tee "$RUNNER_TEMP/strict.json" | jq -e '.data.workflow.status == "passed" and .diagnostics == []'
+          calcit analyze weak-types --only deprecated-call --summary-only --format json | jq -e '.data.summary.calls == 0'
+          calcit test --require-match
+      - name: Build and run offline regression tests
+        run: |
+          set -euo pipefail
+          VITE_BASE_URL=./ yarn build
+          calcit --reload-fn respo.render.html/make-string js
+          node --test tests/*.test.mjs
+      - name: Preserve diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: migration-probe-0451
+          path: ${{ runner.temp }}/strict.json
+          if-no-files-found: ignore
+          retention-days: 2
