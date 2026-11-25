@@ -46,7 +46,7 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           p = Path('deps.cirru')
-          s = p.read_text().replace('(:dependencies $ {} (|Respo/alerts.calcit |0.14.12)', '(:dependencies $ {}')
+          s = p.read_text().replace(':dependencies $ {} (|Respo/alerts.calcit |0.14.12)', ':dependencies $ {}')
           p.write_text(s)
           PY
           caps --strict --ci
